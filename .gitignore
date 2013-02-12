@@ -1,0 +1,8 @@
+# Compiled source #
+###################
+*.o
+*.s
+*.map
+*.d
+stringServer
+stringClient
