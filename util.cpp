@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
+#include <stdint.h>
 
 using namespace std;
 
@@ -11,6 +12,11 @@ struct HostPort {
     SERVER,
     BINDER,
   };
+
+  HostPort()
+    : hostname("UNINIT_HOSTNAME"),
+      port(-1) {}
+
   string hostname;
   int port;
 };
@@ -46,41 +52,50 @@ void putHostPort(HostPort::Type type, string hostname, string port) {
   system(cmd2.c_str());
 }
 
-HostPort getHostPort(HostPort::Type type) {
-  HostPort ret;
+HostPort* getHostPort(HostPort::Type type) {
+  HostPort* ret = NULL;
   if (type == HostPort::SERVER) {
     char* host = getenv("SERVER_ADDRESS");
     char* port = getenv("SERVER_PORT");
     if (host && port) {
-      ret.hostname = string(host);
-      ret.port = atoi(port);
+      ret = new HostPort();
+      ret->hostname = string(host);
+      ret->port = atoi(port);
     } else {
       string user(getenv("USER"));
+      system("rm -f server_hostport");
       // Source a web accessible file
       string wget_cmd = "wget http://www.student.cs.uwaterloo.ca/~" + user
-        + "/server_hostport -O server_hostport";
+        + "/server_hostport -O server_hostport --quiet ";
+      cout << wget_cmd << endl;
       system(wget_cmd.c_str());
       ifstream f("server_hostport", ios::in);
       if (f.is_open()) {
-        getline(f, ret.hostname);
+        cout << "opened." << endl;
+        ret = new HostPort();
+        getline(f, ret->hostname);
         string tmp;
         getline(f, tmp);
-        ret.port = atoi(tmp.c_str());
+        ret->port = atoi(tmp.c_str());
       }
       f.close();
     }
   }
-  cout << ret.hostname << endl;
-  cout << ret.port     << endl;
+  if (ret) {
+    cout << ret->hostname << endl;
+    cout << ret->port     << endl;
+  }
   // TODO, binder
   return ret;
 }
 
 int sendString(int sockfd, string buffer) {
   int rc;
-  size_t size = buffer.size();
+  uint64_t size = buffer.size();
   // Send the length of buffer so that receiving end knows when to stop.
-  rc = write(sockfd, &size, sizeof(size));
+  // TODO, endian-ness??
+  //rc = write(sockfd, (char*)&size, sizeof(uint64_t));
+  //cout << sizeof(size) << endl;
 
   // Send the buffer
   rc = write(sockfd, buffer.c_str(), size);
@@ -89,16 +104,30 @@ int sendString(int sockfd, string buffer) {
 }
 
 string recvString(int sockfd) {
-  int rc;
-  size_t size = 0;
-  // Send the length of buffer so that receiving end knows when to stop.
-  rc = read(sockfd, &size, sizeof(size));
+  return "";
+  //int rc;
+  //size_t size = 0;
+  //// Send the length of buffer so that receiving end knows when to stop.
+  //rc = read(sockfd, &size, sizeof(size));
 
-  string ret(size);
+  //string ret(size);
 
-  // Send the buffer
-  rc = read(sockfd, &(ret[0]), len);
+  //// Send the buffer
+  //rc = read(sockfd, &(ret[0]), len);
 
-  return ret;
+  //return ret;
+}
+
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+
+#define ASSERT(X, ...) { \
+    if (!(X)) { \
+      printf("Assertion failed in file " __FILE__ " line:" TOSTRING(__LINE__) "\n"); \
+      printf("[%s] ", __func__); \
+      printf(__VA_ARGS__); \
+      printf("\n"); \
+      exit(1); \
+    } \
 }
 

@@ -15,8 +15,8 @@
 using namespace std;
 
 void error(const char *msg) {
-      perror(msg);
-          exit(1);
+  perror(msg);
+  exit(1);
 }
 
 string toTitleCase(string data) {
@@ -42,43 +42,38 @@ int main() {
   socklen_t clilen;
   char buffer[256];
   struct sockaddr_in serv_addr, cli_addr;
+  int rc;
   sockfd = socket(AF_INET, SOCK_STREAM, 0);
-  if (sockfd < 0) {
-    error("ERROR opening socket");
-  }
+  ASSERT(sockfd >= 0, "ERROR opening socket");
 
-  bzero((char *) &serv_addr, sizeof(serv_addr));
+  bzero((char*)&serv_addr, sizeof(serv_addr));
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_addr.s_addr = INADDR_ANY;
   serv_addr.sin_port = htons(0);
-  if (bind(sockfd, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0) {
-    error("ERROR on binding");
-  }
+  rc = bind(sockfd, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
+  ASSERT(rc >= 0, "ERROR on binding");
   listen(sockfd, 5);
 
+  // Get randomly assigned port number
   socklen_t addrlen = sizeof(serv_addr);
   getsockname(sockfd, (struct sockaddr*)&serv_addr, &addrlen);
   string hostname = exec("hostname -A");
-  putHostPort(HostPort::SERVER, hostname, to_string((long long int)ntohs(serv_addr.sin_port)));
+  putHostPort(HostPort::SERVER, hostname,
+      to_string((long long int)ntohs(serv_addr.sin_port)));
 
   clilen = sizeof(cli_addr);
   newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr, &clilen);
-  if (newsockfd < 0) {
-    error("ERROR on accept");
-  }
+  ASSERT(newsockfd >= 0, "ERROR on accept");
+  printf ("hadfhasdfa\n");
 
-  string msg;
-  size_t bytes_read;
-  do {
-      bzero(buffer, 256);
-      bytes_read = read(newsockfd, buffer, 255);
-      msg += string(buffer, 255);
-  } while (bytes_read > 0);
-  if (bytes_read < 0) error("ERROR reading from socket");
-  cout << msg << endl;
+  bzero(buffer, 256);
+  int n = read(newsockfd, buffer, 255);
+  ASSERT(n >= 0, "ERROR reading from socket");
+  printf("Here is the message: %s\n", buffer);
 
-  int n = write(newsockfd, "I got your message", 18);
-  if (n < 0) error("ERROR writing to socket");
+  n = write(newsockfd,"I got your message", 18);
+  ASSERT(n >= 0, "ERROR writing to socket");
+
   close(newsockfd);
   close(sockfd);
 
