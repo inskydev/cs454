@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,6 +12,7 @@ int main(int argc, char *argv[]) {
   HostPort* hp = getHostPort(HostPort::SERVER);
   ASSERT(hp, "Error, no server hostport found.");
   Transporter transport(hp->hostname, hp->port);
+  transport.connect();
 
   printf("Please enter the message: \n");
   //string msg;

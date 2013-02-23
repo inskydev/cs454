@@ -5,6 +5,21 @@
 #include <fstream>
 #include <stdint.h>
 
+
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+
+#define ASSERT(X, ...) { \
+    if (!(X)) { \
+      printf("Assertion failed in file " __FILE__ " line:" TOSTRING(__LINE__) "\n"); \
+      printf("[%s] ", __func__); \
+      printf(__VA_ARGS__); \
+      printf("\n"); \
+      exit(1); \
+    } \
+}
+
+
 using namespace std;
 
 struct HostPort {
@@ -92,10 +107,11 @@ HostPort* getHostPort(HostPort::Type type) {
 int sendString(int sockfd, string buffer) {
   int rc;
   uint64_t size = buffer.size();
+  cout << "sending " << size << "bytes." << endl;
   // Send the length of buffer so that receiving end knows when to stop.
   // TODO, endian-ness??
-  //rc = write(sockfd, (char*)&size, sizeof(uint64_t));
-  //cout << sizeof(size) << endl;
+  rc = write(sockfd, (char*)&size, sizeof(uint64_t));
+  cout << sizeof(size) << endl;
 
   // Send the buffer
   rc = write(sockfd, buffer.c_str(), size);
@@ -104,30 +120,19 @@ int sendString(int sockfd, string buffer) {
 }
 
 string recvString(int sockfd) {
-  return "";
-  //int rc;
-  //size_t size = 0;
-  //// Send the length of buffer so that receiving end knows when to stop.
-  //rc = read(sockfd, &size, sizeof(size));
+  int rc;
+  uint64_t size = 0;
+  // Send the length of buffer so that receiving end knows when to stop.
+  rc = read(sockfd, (char*)&size, sizeof(size));
+  ASSERT(rc >= 0, "ERROR reading from socket");
+  cout << "receiving " << size << "bytes." << endl;
 
-  //string ret(size);
+  string ret(' ', size + 1);
 
-  //// Send the buffer
-  //rc = read(sockfd, &(ret[0]), len);
+  // Send the buffer
+  rc = read(sockfd, &(ret[0]), size);
+  ret[size] = '\0'; // null terminate.
 
-  //return ret;
-}
-
-#define STRINGIFY(x) #x
-#define TOSTRING(x) STRINGIFY(x)
-
-#define ASSERT(X, ...) { \
-    if (!(X)) { \
-      printf("Assertion failed in file " __FILE__ " line:" TOSTRING(__LINE__) "\n"); \
-      printf("[%s] ", __func__); \
-      printf(__VA_ARGS__); \
-      printf("\n"); \
-      exit(1); \
-    } \
+  return ret;
 }
 
