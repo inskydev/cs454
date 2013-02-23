@@ -19,14 +19,14 @@ string toTitleCase(string data) {
   std::transform(data.begin(), data.end(), data.begin(), ::tolower);
 
   // Capitalize first of everyword.
-  bool beginWord = true;
+  bool lastWasSpace = true;
   for (size_t i = 0; i < data.size(); i++) {
     if (data[i] == ' ' || data[i] == '\t') {
-      beginWord = true;
+      lastWasSpace = true;
     }
-    if (beginWord && data[i] != ' ') {
+    if (lastWasSpace && data[i] != ' ') {
       data[i] = (char)toupper(data[i]);
-      beginWord = false;
+      lastWasSpace = false;
     }
   }
   return data;
@@ -34,7 +34,6 @@ string toTitleCase(string data) {
 
 int main() {
   int sockfd, newsockfd;
-  socklen_t clilen;
   struct sockaddr_in serv_addr, cli_addr;
   int rc;
   sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -53,18 +52,22 @@ int main() {
   getsockname(sockfd, (struct sockaddr*)&serv_addr, &addrlen);
   // Get complete fully qualified name.
   string hostname = exec("hostname -A");
+  // Publish hostport value to internet.
   putHostPort(HostPort::SERVER, hostname,
       to_string((long long int)ntohs(serv_addr.sin_port)));
 
-  clilen = sizeof(cli_addr);
+  printf("Accepting\n");
+  socklen_t clilen = sizeof(cli_addr);
   newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr, &clilen);
   ASSERT(newsockfd >= 0, "ERROR on accept");
 
-  string msg = recvString(newsockfd);
-  printf("Here is the message: %s\n", msg.c_str());
-  sendString(newsockfd, toTitleCase(msg));
-
+  while (1) {
+    string msg = recvString(newsockfd);
+    printf("Here is the message: %s\n", msg.c_str());
+    sendString(newsockfd, toTitleCase(msg));
+  }
   close(newsockfd);
+
   close(sockfd);
 
   return 0;

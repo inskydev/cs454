@@ -22,6 +22,23 @@
 
 using namespace std;
 
+struct PMutex {
+  PMutex() {
+    pthread_mutex_init(&mutex, NULL); // defualt mutex, unlocked
+  }
+
+  void lock() {
+    pthread_mutex_lock(&mutex);
+  }
+
+  void unlock() {
+    pthread_mutex_unlock(&mutex);
+  }
+
+
+  pthread_mutex_t mutex;
+};
+
 struct HostPort {
   enum Type {
     SERVER,
@@ -82,11 +99,10 @@ HostPort* getHostPort(HostPort::Type type) {
       // Source a web accessible file
       string wget_cmd = "wget http://www.student.cs.uwaterloo.ca/~" + user
         + "/server_hostport -O server_hostport --quiet ";
-      cout << wget_cmd << endl;
       system(wget_cmd.c_str());
       ifstream f("server_hostport", ios::in);
       if (f.is_open()) {
-        cout << "opened." << endl;
+        cout << "Using server published hostport." << endl;
         ret = new HostPort();
         getline(f, ret->hostname);
         string tmp;
@@ -106,12 +122,11 @@ HostPort* getHostPort(HostPort::Type type) {
 
 int sendString(int sockfd, string buffer) {
   int rc;
-  uint64_t size = buffer.size();
+  uint32_t size = buffer.size() + 1; // include null
   cout << "sending " << size << "bytes." << endl;
   // Send the length of buffer so that receiving end knows when to stop.
   // TODO, endian-ness??
-  rc = write(sockfd, (char*)&size, sizeof(uint64_t));
-  cout << sizeof(size) << endl;
+  rc = write(sockfd, (char*)&size, sizeof(size));
 
   // Send the buffer
   rc = write(sockfd, buffer.c_str(), size);
@@ -120,19 +135,24 @@ int sendString(int sockfd, string buffer) {
 }
 
 string recvString(int sockfd) {
+  // FIXME, Doesn't seem to detect socket was closed by server.. =S
+
   int rc;
-  uint64_t size = 0;
+  uint32_t size = 0;
   // Send the length of buffer so that receiving end knows when to stop.
   rc = read(sockfd, (char*)&size, sizeof(size));
   ASSERT(rc >= 0, "ERROR reading from socket");
+  if (rc == 0) return "";
   cout << "receiving " << size << "bytes." << endl;
 
-  string ret(' ', size + 1);
+  char* buffer = new char[size];
 
   // Send the buffer
-  rc = read(sockfd, &(ret[0]), size);
-  ret[size] = '\0'; // null terminate.
+  rc = read(sockfd, buffer, size);
+  buffer[size] = '\0'; // null terminate.
+  string s(buffer);
+  delete [] buffer;
 
-  return ret;
+  return s;
 }
 

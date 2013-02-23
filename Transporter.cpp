@@ -12,8 +12,7 @@ struct Transporter {
     : m_hostname(hostname),
       m_port(port),
       m_sockfd(-1)
-  {
-  }
+  {}
 
   ~Transporter() {
     close(m_sockfd);
@@ -38,16 +37,13 @@ struct Transporter {
     ASSERT(rc >= 0, "Error connecting");
   }
 
-  // Client only.
-  string query(string msg) {
+  // Client only. Async
+  void query(string msg) {
     ASSERT(m_sockfd != -1, "Trying to query without connecting");
     int rc = sendString(m_sockfd, msg);
     ASSERT(rc, "ERROR writing to socket");
-
-    return recvString(m_sockfd);
   }
 
-  private:
   string m_hostname;
   int m_port;
 
