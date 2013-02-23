@@ -1,5 +1,5 @@
 all:
-	g++ server.cpp -o stringServer
+	g++ -std=gnu++0x server.cpp -o stringServer
 	g++ client.cpp -o stringClient
 
 clean:
