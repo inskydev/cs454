@@ -41,7 +41,6 @@ void* query_server_msg(void* t) {
     bufferedMsgs_lock.unlock();
 
     if (msg.size()) {
-      cout << "sent " << msg << endl;
       transporter->query(msg);
     }
     // Polls every 2 seconds.
@@ -70,14 +69,12 @@ int main(int argc, char *argv[]) {
       numOutstandingMsg += 1;
       bufferedMsgs_lock.unlock();
     } else {
-      // No more input
-      break;
+      break; // No more input
     }
-    cout << "still alive. " << endl;
   }
 
   while (numOutstandingMsg != 0) {
-    cout << "waiting" << numOutstandingMsg << endl;
+    cout << "Waiting" << numOutstandingMsg << endl;
     sleep(1);
   }
 

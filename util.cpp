@@ -121,8 +121,7 @@ HostPort* getHostPort(HostPort::Type type) {
 }
 
 int sendString(int sockfd, string buffer) {
-  uint32_t size = buffer.size(); // no null char
-  //cout << "sending " << size << "bytes." << endl;
+  uint32_t size = buffer.size() + 1; // includes null char
   // Send the length of buffer so that receiving end knows when to stop.
   // TODO, endian-ness??
   int num_bytes = 0;
@@ -141,7 +140,6 @@ int sendString(int sockfd, string buffer) {
     if (rc < 0) return rc;
     num_bytes += rc;
   }
-  cout << "sent:" << buffer << endl;
 
   return 0;
 }
@@ -160,9 +158,8 @@ string recvString(int sockfd) {
     num_bytes += rc;
   }
 
-  cout << "size " << size << endl;
   // Read the buffer
-  char* buffer = new char[size + 1]; // leave space for null
+  char* buffer = new char[size]; // leave space for null
   num_bytes = 0;
   while (num_bytes < size) {
     char* begin = (char*)buffer;

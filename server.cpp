@@ -65,10 +65,8 @@ int main() {
   // One from accept client socket, number of active client socket,
   // Last 1 for documentation.
   int highest_fds = listenSocket;
-  cout << highest_fds << endl;
 
   while (select(highest_fds + 1, &sockfds, NULL, NULL, NULL) >= 0) {
-    cout << "got select." << endl;
     if (FD_ISSET(listenSocket, &sockfds)) {
       // New client is knocking.
       socklen_t clilen = sizeof(cli_addr);
@@ -77,7 +75,6 @@ int main() {
       FD_SET(client, &sockfds);
       clientSockets.push_back(client);
       highest_fds = std::max(highest_fds, client);
-      cout << highest_fds << endl;
       continue;
     }
 
@@ -91,21 +88,19 @@ int main() {
         handled_one = true;
         string msg = recvString(*client);
         if (msg.size() == 0) {
+          //close(*client);
           clientSockets.erase(client); // Client closed socket.
-          break;
+        } else {
+          sendString(*client, toTitleCase(msg));
         }
-
-        printf("Here is the message: %s\n", msg.c_str());
-        int rc = sendString(*client, toTitleCase(msg));
-        cout << "rc " << rc << endl;
         break;
       }
     }
 
     if (not handled_one) {
-      cout << "WHATASDFA" << endl;
+
     } else {
-      // Clear everything.
+      // Reset sockets that needed to be selected on.
       FD_ZERO(&sockfds);
       FD_SET(listenSocket, &sockfds);
       for (list<int>::iterator client = clientSockets.begin();
@@ -115,7 +110,6 @@ int main() {
       }
     }
   } // End select
-  //close(client);
 
   close(listenSocket);
 
