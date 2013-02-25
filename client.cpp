@@ -73,6 +73,7 @@ int main(int argc, char *argv[]) {
       // No more input
       break;
     }
+    cout << "still alive. " << endl;
   }
 
   while (numOutstandingMsg != 0) {

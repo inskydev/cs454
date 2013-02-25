@@ -121,35 +121,56 @@ HostPort* getHostPort(HostPort::Type type) {
 }
 
 int sendString(int sockfd, string buffer) {
-  int rc;
-  uint32_t size = buffer.size() + 1; // include null
-  cout << "sending " << size << "bytes." << endl;
+  uint32_t size = buffer.size(); // no null char
+  //cout << "sending " << size << "bytes." << endl;
   // Send the length of buffer so that receiving end knows when to stop.
   // TODO, endian-ness??
-  rc = write(sockfd, (char*)&size, sizeof(size));
+  int num_bytes = 0;
+  while (num_bytes < sizeof(size)) {
+    char* begin = (char*)&size;
+    int rc = write(sockfd, begin + num_bytes, sizeof(size) - num_bytes);
+    if (rc < 0) return rc;
+    num_bytes += rc;
+  }
 
   // Send the buffer
-  rc = write(sockfd, buffer.c_str(), size);
+  num_bytes = 0;
+  while (num_bytes < size) {
+    char* begin = (char*)buffer.c_str();
+    int rc = write(sockfd, begin + num_bytes, size - num_bytes);
+    if (rc < 0) return rc;
+    num_bytes += rc;
+  }
+  cout << "sent:" << buffer << endl;
 
-  return rc;
+  return 0;
 }
 
 string recvString(int sockfd) {
-  // FIXME, Doesn't seem to detect socket was closed by server.. =S
-
-  int rc;
   uint32_t size = 0;
-  // Send the length of buffer so that receiving end knows when to stop.
-  rc = read(sockfd, (char*)&size, sizeof(size));
-  ASSERT(rc >= 0, "ERROR reading from socket");
-  if (rc == 0) return "";
-  cout << "receiving " << size << "bytes." << endl;
+  // Read the length of buffer so that receiving end knows when to stop.
+  int num_bytes = 0;
+  while (num_bytes < sizeof(size)) {
+    char* begin = (char*)&size;
+    int rc = read(sockfd, begin + num_bytes, sizeof(size) - num_bytes);
+    if (rc == 0) {
+      return "";
+    }
+    if (rc < 0) return "";
+    num_bytes += rc;
+  }
 
-  char* buffer = new char[size];
-
-  // Send the buffer
-  rc = read(sockfd, buffer, size);
-  buffer[size] = '\0'; // null terminate.
+  cout << "size " << size << endl;
+  // Read the buffer
+  char* buffer = new char[size + 1]; // leave space for null
+  num_bytes = 0;
+  while (num_bytes < size) {
+    char* begin = (char*)buffer;
+    int rc = read(sockfd, begin + num_bytes, size - num_bytes);
+    if (rc < 0) return "";
+    num_bytes += rc;
+  }
+  buffer[size] = NULL; // null terminate.
   string s(buffer);
   delete [] buffer;
 
