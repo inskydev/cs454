@@ -7,6 +7,7 @@
 
 using namespace std;
 
+// Manages client side connections.
 struct Transporter {
   Transporter(string hostname, int port)
     : m_hostname(hostname),

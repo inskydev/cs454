@@ -49,7 +49,10 @@ void* query_server_msg(void* t) {
 }
 
 int main(int argc, char *argv[]) {
-  HostPort* hp = getHostPort(HostPort::SERVER);
+  bool is_debug = argc > 1;
+  bool use_published_hostport = argc > 2;
+  // Random 2nd and 3rd arguments forces
+  HostPort* hp = getHostPort(HostPort::SERVER, is_debug, use_published_hostport);
   ASSERT(hp, "Error, no server hostport found.");
   Transporter transport(hp->hostname, hp->port);
   transport.connect();
@@ -74,7 +77,7 @@ int main(int argc, char *argv[]) {
   }
 
   while (numOutstandingMsg != 0) {
-    cout << "Waiting" << numOutstandingMsg << endl;
+    // cout << "Waiting" << numOutstandingMsg << endl;
     sleep(1);
   }
 

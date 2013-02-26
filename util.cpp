@@ -71,20 +71,23 @@ std::string exec(string cmd) {
   return result;
 }
 
-void putHostPort(HostPort::Type type, string hostname, string port) {
+void putHostPort(HostPort::Type type, string hostname, string port, bool put_file = false) {
   cout << "SERVER_ADDRESS " << hostname << endl;
   cout << "SERVER_PORT " << port << endl;
-  string user(getenv("USER"));
 
-  string cmd1 = "echo " + hostname +
-    " >  /u9/" + user + "/public_html/server_hostport";
-  string cmd2 = "echo " + port +
-    " >> /u9/" + user + "/public_html/server_hostport";
-  system(cmd1.c_str());
-  system(cmd2.c_str());
+  if (put_file) {
+    string user(getenv("USER"));
+
+    string cmd1 = "echo " + hostname +
+      " >  /u9/" + user + "/public_html/server_hostport";
+    string cmd2 = "echo " + port +
+      " >> /u9/" + user + "/public_html/server_hostport";
+    system(cmd1.c_str());
+    system(cmd2.c_str());
+  }
 }
 
-HostPort* getHostPort(HostPort::Type type) {
+HostPort* getHostPort(HostPort::Type type, bool debug = false, bool use_file = false) {
   HostPort* ret = NULL;
   if (type == HostPort::SERVER) {
     char* host = getenv("SERVER_ADDRESS");
@@ -93,7 +96,7 @@ HostPort* getHostPort(HostPort::Type type) {
       ret = new HostPort();
       ret->hostname = string(host);
       ret->port = atoi(port);
-    } else {
+    } else if (use_file) {
       string user(getenv("USER"));
       system("rm -f server_hostport");
       // Source a web accessible file
@@ -112,7 +115,7 @@ HostPort* getHostPort(HostPort::Type type) {
       f.close();
     }
   }
-  if (ret) {
+  if (ret && debug) {
     cout << ret->hostname << endl;
     cout << ret->port     << endl;
   }

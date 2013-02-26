@@ -33,9 +33,9 @@ string toTitleCase(string data) {
   return data;
 }
 
-int main() {
-  fd_set sockfds;
-  FD_ZERO(&sockfds);
+int main(int argc, char* argv[]) {
+  bool debug = argc > 1;
+  bool put_file = argc > 2;
 
   int listenSocket;
   list<int> clientSockets;
@@ -59,7 +59,10 @@ int main() {
   string hostname = exec("hostname -A");
   // Publish hostport value to internet. (so we don't have to set env var)
   putHostPort(HostPort::SERVER, hostname,
-      to_string((long long int)ntohs(serv_addr.sin_port)));
+      to_string((long long int)ntohs(serv_addr.sin_port)),
+      put_file);
+  fd_set sockfds;
+  FD_ZERO(&sockfds);
   FD_SET(listenSocket, &sockfds);
 
   // One from accept client socket, number of active client socket,
@@ -88,7 +91,7 @@ int main() {
         handled_one = true;
         string msg = recvString(*client);
         if (msg.size() == 0) {
-          //close(*client);
+          close(*client);
           clientSockets.erase(client); // Client closed socket.
         } else {
           sendString(*client, toTitleCase(msg));
