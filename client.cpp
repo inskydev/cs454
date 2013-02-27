@@ -9,7 +9,8 @@
 
 using namespace std;
 
-int numOutstandingMsg = 0;
+Counter numOutstandingMsg;
+Counter done_reading;
 list<string> bufferedMsgs;
 PMutex bufferedMsgs_lock;
 
@@ -17,13 +18,13 @@ void* print_server_msg(void* t) {
   Transporter* transporter = (Transporter*) t;
 
   // Rely on main exiting to terminate.
-  while (1) {
-    string msg = recvString(transporter->m_sockfd); // Blocking receive.
-    if (msg.size()) {
-      cout << "Server: " << msg << endl;
-      bufferedMsgs_lock.lock();
-      numOutstandingMsg -= 1;
-      bufferedMsgs_lock.unlock();
+  while (done_reading.get() == 0 || numOutstandingMsg.get() > 0) {
+    if (numOutstandingMsg.get() > 0) {
+      string msg = recvString(transporter->m_sockfd); // Blocking receive.
+      if (msg.size()) {
+        cout << "Server: " << msg << endl;
+        --numOutstandingMsg;
+      }
     }
     sleep(1);
   }
@@ -31,7 +32,7 @@ void* print_server_msg(void* t) {
 
 void* query_server_msg(void* t) {
   Transporter* transporter = (Transporter*) t;
-  while (1) {
+  while (done_reading.get() == 0 || numOutstandingMsg.get() > 0) {
     string msg;
     bufferedMsgs_lock.lock();
     if (bufferedMsgs.size()) {
@@ -61,7 +62,6 @@ int main(int argc, char *argv[]) {
   pthread_create(&receiver, NULL, print_server_msg, &transport);
   pthread_create(&querier, NULL, query_server_msg, &transport);
 
-  printf("Please enter messages: \n");
   while (1) {
     string msg;
     getline(cin, msg);
@@ -69,15 +69,15 @@ int main(int argc, char *argv[]) {
       // enqueue work.
       bufferedMsgs_lock.lock();
       bufferedMsgs.push_back(msg);
-      numOutstandingMsg += 1;
+      ++numOutstandingMsg;
       bufferedMsgs_lock.unlock();
     } else {
       break; // No more input
     }
   }
+  ++done_reading; // Set flag saying read is complete.
 
-  while (numOutstandingMsg != 0) {
-    // cout << "Waiting" << numOutstandingMsg << endl;
+  while (numOutstandingMsg.get() != 0) {
     sleep(1);
   }
 

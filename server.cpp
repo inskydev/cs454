@@ -100,17 +100,13 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    if (not handled_one) {
-
-    } else {
-      // Reset sockets that needed to be selected on.
-      FD_ZERO(&sockfds);
-      FD_SET(listenSocket, &sockfds);
-      for (list<int>::iterator client = clientSockets.begin();
+    // Reset sockets that needed to be selected on.
+    FD_ZERO(&sockfds);
+    FD_SET(listenSocket, &sockfds);
+    for (list<int>::iterator client = clientSockets.begin();
         client != clientSockets.end();
         ++client) {
-        FD_SET(*client, &sockfds);
-      }
+      FD_SET(*client, &sockfds);
     }
   } // End select
 

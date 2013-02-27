@@ -21,7 +21,6 @@
 
 
 using namespace std;
-
 struct PMutex {
   PMutex() {
     pthread_mutex_init(&mutex, NULL); // defualt mutex, unlocked
@@ -38,6 +37,33 @@ struct PMutex {
 
   pthread_mutex_t mutex;
 };
+
+struct Counter {
+  Counter() : value(0) {
+  }
+  void operator++() {
+    mutex.lock();
+    value++;
+    mutex.unlock();
+  }
+
+  void operator--() {
+    mutex.lock();
+    value--;
+    mutex.unlock();
+  }
+
+  int get() {
+    mutex.lock();
+    int copy = value;
+    mutex.unlock();
+    return copy;
+  }
+
+  PMutex mutex;
+  int value;
+};
+
 
 struct HostPort {
   enum Type {
@@ -92,7 +118,7 @@ HostPort* getHostPort(HostPort::Type type, bool debug = false, bool use_file = f
   if (type == HostPort::SERVER) {
     char* host = getenv("SERVER_ADDRESS");
     char* port = getenv("SERVER_PORT");
-    if (host && port) {
+    if (host && port && not use_file) {
       ret = new HostPort();
       ret->hostname = string(host);
       ret->port = atoi(port);
