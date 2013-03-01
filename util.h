@@ -1,13 +1,17 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
+#include <map>
+#include <list>
 #include <string>
+#include <cstring>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
 #include <stdint.h>
 #include <strings.h>
+#include "rpc.h"
 
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)

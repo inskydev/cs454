@@ -4,25 +4,27 @@
 #define CLIENT_LOCATE   'L'
 #define NONE_REGISTERED "NONE_REGISTERED"
 
-int BinderClient::registerServer(char* name, int* argTypes, const string& server) {
+int BinderClient::registerServer(const string&name,
+                                 int* argTypes,
+                                 const string& server) {
   // Send over the name and arg types as two strings.
   // Server side map the socket to hostport and aappend such data.
 
   // Name of an RPC call is normalized.
   // [ name ] <[arg1_input][arg_output][arg1_type][arg1_array]>...
   int numArgType = 0;
-  for (int* c = argTypes; *c != NULL; c++) {
+  for (int* c = argTypes; *c != 0; c++) {
     numArgType++;
   }
   char* buffer = new char[1 + server.size() + 1 + name.size() + numArgType*4 + 1];
   char* start = buffer;
-  *start++ = BINDER_REGISTER;
+  *start++ = SERVER_REGISTER;
   memcpy(start, server.c_str(), server.size());
   start += server.size();
   *start++ = '#'; // Delimiter
   memcpy(start, name.c_str(), name.size());
   start += name.size();
-  for (int* arg = argTypes; *arg != NULL; arg++) {
+  for (int* arg = argTypes; *arg != 0; arg++) {
     int a = *arg;
     if (a & (1 << ARG_INPUT)) {
       *start++ = 'i';
@@ -42,14 +44,14 @@ int BinderClient::registerServer(char* name, int* argTypes, const string& server
   }
   *start = NULL;
 
-  if (sendString(BinderClient->transport->socket, string(buffer)) < 0) {
-    return BINDER_UNREACHEABLE;
+  if (sendString(transport.m_sockfd, string(buffer)) < 0) {
+    return Error::BINDER_UNREACHEABLE;
   } else {
     return 0;
   }
 }
 
-void Binder::handleRequest(const string& msg) {
+void Binder::handleRequest(const string& msg, int clientSocket) {
   if (msg[0] == SERVER_REGISTER) {
     HostPort hp;
     hp.fromString(msg);
@@ -57,12 +59,12 @@ void Binder::handleRequest(const string& msg) {
   } else if (msg[0] == CLIENT_LOCATE) {
     list<HostPort>& s = mapping[msg.substr(1)];
     if (s.size()) {
-      sendString(s.front().toString()); // send result
+      sendString(clientSocket, s.front().toString()); // send result
       s.push_back(s.front()); // Do round robin thingy.
       s.pop_front();
     } else {
       // does not have mapping yet.
-      sendString(NONE_REGISTERED);
+      sendString(clientSocket, NONE_REGISTERED);
     }
   } else {
     cout << "unknown request type" << endl;

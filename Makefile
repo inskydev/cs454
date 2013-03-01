@@ -1,13 +1,18 @@
 
-all:
-	# Static library
-	g++ -std=gnu++0x -c -g -o util.o util.cpp
-	g++ -std=gnu++0x -c -g -o Transporter.o Transporter.cpp
-	ar rcs librpc.a util.o Transporter.o
+all: lib
 	# A Server
 	g++ -std=gnu++0x -L. server.cpp -lrpc -o server 
 	# A client
 	g++ -std=gnu++0x -L. client.cpp -lrpc -lpthread -o client 
+	# Binder
+	g++ -std=gnu++0x -L. binder_main.cpp -lrpc -o binder
+
+lib:
+	# Static library
+	g++ -std=gnu++0x -c -g -o util.o util.cpp
+	g++ -std=gnu++0x -c -g -o Transporter.o Transporter.cpp
+	g++ -std=gnu++0x -c -g -o Binder.o Binder.cpp
+	ar rcs librpc.a util.o Transporter.o Binder.o
 
 
 clean:

@@ -12,6 +12,7 @@
 #include <netinet/in.h>
 
 #include "util.h"
+#include "Binder.h"
 
 int main(int argc, char* argv[]) {
   bool debug = argc > 1;
@@ -76,7 +77,7 @@ int main(int argc, char* argv[]) {
           close(*client);
           clientSockets.erase(client); // Client closed socket.
         } else {
-          binder.handleRequest(msg);
+          binder.handleRequest(msg, *client);
         }
         break;
       }

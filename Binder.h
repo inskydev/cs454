@@ -1,26 +1,26 @@
 #ifndef BINDER_H
 #define BINDER_H
 
-#include <map>
 #include "util.h"
+#include "Transporter.h"
 
 struct BinderClient {
-  Binder(HostPort hp) : hostport(hp) {
-    // TODO control transport
+  BinderClient(HostPort hp)
+    : hostport(hp), transport(hp.hostname, hp.port) {
   }
 
-  int registerServer(char* name, int* argTypes);
+  int registerServer(const string& name, int* argTypes, const string& server);
 
   void locateServer();
 
-  HostPort hostport;
-  Transport transport;
+  HostPort hostport; // Binder hostport
+  Transporter transport;
 };
 
 
 struct Binder {
 
-  void handleRequest(const string& msg);
+  void handleRequest(const string& msg, int clientSocket);
 
   // member vars for mapping
   map<string, list<HostPort> > mapping;
