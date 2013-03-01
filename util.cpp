@@ -19,16 +19,32 @@ std::string exec(string cmd) {
 }
 
 void putHostPort(HostPort::Type type, string hostname, string port, bool put_file) {
-  cout << "SERVER_ADDRESS " << hostname << endl;
-  cout << "SERVER_PORT " << port << endl;
+  string hostEnvVar;
+  string portEnvVar;
+  string hostPortFile;
+
+  if (type == HostPort::SERVER) {
+    hostEnvVar = "SERVER_ADDRESS";
+    portEnvVar = "SERVER_PORT";
+    hostPortFile = "server_hostport";
+  } else if (type == HostPort::BINDER) {
+    hostEnvVar = "BINDER_ADDRESS";
+    portEnvVar = "BINDER_PORT";
+    hostPortFile = "binder_hostport";
+  } else {
+    return;
+  }
+
+  cout << hostEnvVar << " " << hostname << endl;
+  cout << portEnvVar << " " << port << endl;
 
   if (put_file) {
     string user(getenv("USER"));
 
     string cmd1 = "echo " + hostname +
-      " >  /u9/" + user + "/public_html/server_hostport";
+      " >  /u9/" + user + "/public_html/" + hostPortFile;
     string cmd2 = "echo " + port +
-      " >> /u9/" + user + "/public_html/server_hostport";
+      " >> /u9/" + user + "/public_html/" + hostPortFile;
     system(cmd1.c_str());
     system(cmd2.c_str());
   }
@@ -36,37 +52,52 @@ void putHostPort(HostPort::Type type, string hostname, string port, bool put_fil
 
 HostPort* getHostPort(HostPort::Type type, bool debug, bool use_file) {
   HostPort* ret = NULL;
+  string hostEnvVar;
+  string portEnvVar;
+  string hostPortFile;
+
   if (type == HostPort::SERVER) {
-    char* host = getenv("SERVER_ADDRESS");
-    char* port = getenv("SERVER_PORT");
-    if (host && port && not use_file) {
+    hostEnvVar = "SERVER_ADDRESS";
+    portEnvVar = "SERVER_PORT";
+    hostPortFile = "server_hostport";
+  } else if (type == HostPort::BINDER) {
+    hostEnvVar = "BINDER_ADDRESS";
+    portEnvVar = "BINDER_PORT";
+    hostPortFile = "binder_hostport";
+  } else {
+    return NULL;
+  }
+
+  char* host = getenv(hostEnvVar.c_str());
+  char* port = getenv(portEnvVar.c_str());
+  if (host && port && not use_file) {
+    ret = new HostPort();
+    ret->hostname = string(host);
+    ret->port = atoi(port);
+  } else if (use_file) {
+    string user(getenv("USER"));
+    string rmCmd = "rm -f " + hostPortFile;
+    system(rmCmd.c_str());
+    // Source a web accessible file
+    string wget_cmd = "wget http://www.student.cs.uwaterloo.ca/~" + user
+      + "/" + hostPortFile +  " -O " + hostPortFile + " --quiet ";
+    system(wget_cmd.c_str());
+    ifstream f(hostPortFile, ios::in);
+    if (f.is_open()) {
+      cout << "Using server published hostport." << endl;
       ret = new HostPort();
-      ret->hostname = string(host);
-      ret->port = atoi(port);
-    } else if (use_file) {
-      string user(getenv("USER"));
-      system("rm -f server_hostport");
-      // Source a web accessible file
-      string wget_cmd = "wget http://www.student.cs.uwaterloo.ca/~" + user
-        + "/server_hostport -O server_hostport --quiet ";
-      system(wget_cmd.c_str());
-      ifstream f("server_hostport", ios::in);
-      if (f.is_open()) {
-        cout << "Using server published hostport." << endl;
-        ret = new HostPort();
-        getline(f, ret->hostname);
-        string tmp;
-        getline(f, tmp);
-        ret->port = atoi(tmp.c_str());
-      }
-      f.close();
+      getline(f, ret->hostname);
+      string tmp;
+      getline(f, tmp);
+      ret->port = atoi(tmp.c_str());
     }
+    f.close();
   }
   if (ret && debug) {
     cout << ret->hostname << endl;
     cout << ret->port     << endl;
   }
-  // TODO, binder
+
   return ret;
 }
 

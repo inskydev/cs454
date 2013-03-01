@@ -12,6 +12,14 @@
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 
+struct Error {
+  enum TYPE {
+    MISSING_ENV_VAR = -1,
+    UNINITIALIZED_BINDER = -2,
+    BINDER_UNREACHEABLE = -3,
+  };
+};
+
 #define ASSERT(X, ...) { \
     if (!(X)) { \
       printf("Assertion failed in file " __FILE__ " line:" TOSTRING(__LINE__) "\n"); \
@@ -76,6 +84,16 @@ struct HostPort {
   HostPort()
     : hostname("UNINIT_HOSTNAME"),
       port(-1) {}
+
+  string toString() const {
+    return hostname + ":" + to_string((long long int)port);
+  }
+
+  void fromString(const string& msg) {
+    size_t port = msg.find(':');
+    hostname = msg.substr(1, port); // Skip msg header type
+    port = atoi(string(msg.substr(port+1, msg.find('#') - port + 1)).c_str());
+  }
 
   string hostname;
   int port;
