@@ -4,5 +4,9 @@
 *.s
 *.map
 *.d
+*.a
 stringServer
 stringClient
+client
+server
+server_hostport

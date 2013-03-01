@@ -1,83 +1,4 @@
-#include <string>
-#include <cstdio>
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <stdint.h>
-
-
-#define STRINGIFY(x) #x
-#define TOSTRING(x) STRINGIFY(x)
-
-#define ASSERT(X, ...) { \
-    if (!(X)) { \
-      printf("Assertion failed in file " __FILE__ " line:" TOSTRING(__LINE__) "\n"); \
-      printf("[%s] ", __func__); \
-      printf(__VA_ARGS__); \
-      printf("\n"); \
-      exit(1); \
-    } \
-}
-
-
-using namespace std;
-struct PMutex {
-  PMutex() {
-    pthread_mutex_init(&mutex, NULL); // defualt mutex, unlocked
-  }
-
-  void lock() {
-    pthread_mutex_lock(&mutex);
-  }
-
-  void unlock() {
-    pthread_mutex_unlock(&mutex);
-  }
-
-
-  pthread_mutex_t mutex;
-};
-
-struct Counter {
-  Counter() : value(0) {
-  }
-  void operator++() {
-    mutex.lock();
-    value++;
-    mutex.unlock();
-  }
-
-  void operator--() {
-    mutex.lock();
-    value--;
-    mutex.unlock();
-  }
-
-  int get() {
-    mutex.lock();
-    int copy = value;
-    mutex.unlock();
-    return copy;
-  }
-
-  PMutex mutex;
-  int value;
-};
-
-
-struct HostPort {
-  enum Type {
-    SERVER,
-    BINDER,
-  };
-
-  HostPort()
-    : hostname("UNINIT_HOSTNAME"),
-      port(-1) {}
-
-  string hostname;
-  int port;
-};
+#include "util.h"
 
 std::string exec(string cmd) {
   FILE* pipe = popen(cmd.c_str(), "r");
@@ -97,7 +18,7 @@ std::string exec(string cmd) {
   return result;
 }
 
-void putHostPort(HostPort::Type type, string hostname, string port, bool put_file = false) {
+void putHostPort(HostPort::Type type, string hostname, string port, bool put_file) {
   cout << "SERVER_ADDRESS " << hostname << endl;
   cout << "SERVER_PORT " << port << endl;
 
@@ -113,7 +34,7 @@ void putHostPort(HostPort::Type type, string hostname, string port, bool put_fil
   }
 }
 
-HostPort* getHostPort(HostPort::Type type, bool debug = false, bool use_file = false) {
+HostPort* getHostPort(HostPort::Type type, bool debug, bool use_file) {
   HostPort* ret = NULL;
   if (type == HostPort::SERVER) {
     char* host = getenv("SERVER_ADDRESS");

@@ -11,7 +11,7 @@
 #include <sys/select.h>
 #include <netinet/in.h>
 
-#include "util.cpp"
+#include "util.h"
 
 using namespace std;
 
@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
   string hostname = exec("hostname -A");
   // Publish hostport value to internet. (so we don't have to set env var)
   putHostPort(HostPort::SERVER, hostname,
-      to_string((long long int)ntohs(serv_addr.sin_port)),
+      std::to_string((long long int)ntohs(serv_addr.sin_port)),
       put_file);
   fd_set sockfds;
   FD_ZERO(&sockfds);

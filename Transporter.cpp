@@ -5,6 +5,8 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
+#include "util.h"
+
 using namespace std;
 
 // Manages client side connections.
