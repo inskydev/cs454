@@ -12,6 +12,8 @@ struct RPCServer : public Server {
   virtual void connected(int socketid)  {}
   virtual void disconnected(int socketid) {}
   virtual void handleRequest(int socketid, const string& msg) {}
+
+  map<string, skeleton> rpcHandlerMapping;
 };
 
 // Global variables because it has to be.
@@ -24,10 +26,8 @@ int rpcInit() {
   binderClient = new BinderClient(*hp);
   delete hp;
 
-  // Set up ports to accept client requests.
+  // Set up ports to accept (but have not started accepting yet);
   rpcServer = new RPCServer();
-
-  // create transport for listening to incoming client connection.
 
   return 0;
 }
@@ -36,7 +36,9 @@ int rpcRegister(char* name, int* argTypes, skeleton f) {
   if (!binderClient) return Error::UNINITIALIZED_BINDER;
   if (!rpcServer) return Error::UNINITIALIZED_SERVER;
 
-  // TODO Register at local server handler.
+  // Register at local server handler.
+  string args = normalizeArgs(string(name), argTypes);
+  rpcServer->rpcHandlerMapping[args] = f;
 
   // Notify binder that the server is ready.
   return binderClient->registerServer(

@@ -150,4 +150,6 @@ string recvString(int sockfd);
 
 int* formatArgTypes(const vector<ArgType>& args);
 
+string normalizeArgs(const string& name, int* argTypes);
+
 #endif // UTIL_H_

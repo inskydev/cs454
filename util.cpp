@@ -178,3 +178,37 @@ int* formatArgTypes(const vector<ArgType>& args) {
 
   return ret;
 }
+
+string normalizeArgs(const string& name, int* argTypes) {
+  // Name of an RPC call is normalized.
+  // [ name ] <[arg1_input][arg_output][arg1_type][arg1_array]>...
+  int numArgType = 0;
+  for (int* c = argTypes; *c != 0; c++) {
+    numArgType++;
+  }
+  char* buffer = new char[name.size() + numArgType*4 + 1];
+  char* start = buffer;
+  memcpy(start, name.c_str(), name.size());
+  start += name.size();
+  for (int* arg = argTypes; *arg != 0; arg++) {
+    int a = *arg;
+    if (a & (1 << ARG_INPUT)) {
+      *start++ = 'i';
+    } else {
+      *start++ = ' ';
+    }
+    if (a & (1 << ARG_OUTPUT)) {
+      *start++ = 'o';
+    } else {
+      *start++ = ' ';
+    }
+    a &= 0x4fffffff; // Chop off top 30bits.
+    int arg_type = (a >> 24);
+    *start++ = '0' + arg_type;
+    int arg_len = (a & 0xffff); // Lower 16 bit is length
+    *start++ = arg_len > 0 ? 'A' : 'S';
+  }
+
+  *start = NULL;
+  return string(buffer);
+}
