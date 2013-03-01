@@ -21,7 +21,7 @@ int BinderClient::registerServer(const string& name,
   }
 }
 
-void Binder::handleRequest(const string& msg, int clientSocket) {
+void Binder::handleRequest(int clientSocket, const string& msg) {
   if (msg.size() == 0) {
     // Handle client termination by removing hostport in all mapping.
 

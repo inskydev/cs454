@@ -3,6 +3,7 @@
 
 #include "util.h"
 #include "Transporter.h"
+#include "Server.h"
 
 struct BinderClient {
   BinderClient(HostPort hp)
@@ -17,9 +18,16 @@ struct BinderClient {
   Transporter transport;
 };
 
-struct Binder {
+struct Binder : public Server {
 
-  void handleRequest(const string& msg, int clientSocket);
+  Binder() : Server() {
+  }
+
+  virtual ~RPCServer() {}
+
+  virtual void connected(int socketid)  {}
+  virtual void disconnected(int socketid) {}
+  virtual void handleRequest(int socketid, const string& msg);
 
   // member vars for mapping
   map<string, list<HostPort> > mapping;
