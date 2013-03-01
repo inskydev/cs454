@@ -42,7 +42,7 @@ void* query_server_msg(void* t) {
     bufferedMsgs_lock.unlock();
 
     if (msg.size()) {
-      transporter->query(msg);
+      transporter->sendString(msg);
     }
     // Polls every 2 seconds.
     sleep(2);

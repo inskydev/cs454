@@ -34,6 +34,19 @@ string toTitleCase(string data) {
 }
 
 int main(int argc, char* argv[]) {
+
+  /* create sockets and connect to the binder */
+  rpcInit();
+
+  int* argTypes0 = formatArgTypes(
+      {
+        ArgType(INPUT, OUTPUT, ARG_CHAR, 0),
+        ArgType(INPUT, NOT_OUTPUT, ARG_INT, 2)
+      });
+
+  rpcRegister("f0", argTypes0, NULL);
+
+
   bool debug = argc > 1;
   bool put_file = argc > 2;
 

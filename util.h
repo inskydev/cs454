@@ -3,6 +3,7 @@
 
 #include <map>
 #include <list>
+#include <vector>
 #include <string>
 #include <cstring>
 #include <cstdio>
@@ -16,11 +17,17 @@
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 
+#define INPUT true
+#define OUTPUT true
+#define NOT_INPUT true
+#define NOT_OUTPUT true
+
 struct Error {
   enum TYPE {
     MISSING_ENV_VAR = -1,
     UNINITIALIZED_BINDER = -2,
     BINDER_UNREACHEABLE = -3,
+    UNINITIALIZED_SERVER = -4,
   };
 };
 
@@ -93,6 +100,10 @@ struct HostPort {
     return hostname + ":" + to_string((long long int)port);
   }
 
+  bool operator==(const HostPort& rhs) const {
+    return hostname == rhs.hostname && port == rhs.port;
+  }
+
   void fromString(const string& msg) {
     size_t port = msg.find(':');
     hostname = msg.substr(1, port); // Skip msg header type
@@ -101,6 +112,29 @@ struct HostPort {
 
   string hostname;
   int port;
+};
+
+struct ArgType {
+  ArgType(bool input, bool output, int type, int num_times)
+    : input(input), output(output), type(type), num_times(num_times){
+      if (type != ARG_CHAR || type != ARG_SHORT ||
+          type != ARG_INT || type != ARG_LONG ||
+          type != ARG_DOUBLE || type != ARG_FLOAT) {
+        ASSERT(false, "Unknown type %d", type);
+      }
+      if (num_times > 0xffff) {
+        ASSERT(false, "Cannot have array length greater than %d", num_times);
+      }
+
+    }
+
+  int get() const;
+
+  bool input;
+  bool output;
+  int type;      // INT or something else
+  int num_times; // zero means scalar
+
 };
 
 
@@ -113,5 +147,7 @@ HostPort* getHostPort(HostPort::Type type, bool debug = false, bool use_file = f
 int sendString(int sockfd, string buffer);
 
 string recvString(int sockfd);
+
+int* formatArgTypes(const vector<ArgType>& args);
 
 #endif // UTIL_H_

@@ -1,8 +1,10 @@
 #include "rpc.h"
 #include "util.h"
+#include "Binder.h"
 
 // Global variables because it has to be.
 BinderClient* binderClient = NULL;
+HostPort* serverHostPort = NULL;
 
 int rpcInit() {
   HostPort* hp = getHostPort(HostPort::BINDER, true, true);
@@ -16,11 +18,13 @@ int rpcInit() {
 
 int rpcRegister(char* name, int* argTypes, skeleton f) {
   if (!binderClient) return Error::UNINITIALIZED_BINDER;
+  if (!serverHostPort) return Error::UNINITIALIZED_SERVER;
 
   // TODO Register at local server handler.
 
   // Notify binder that the server is ready.
-  return binderClient->registerServer(name, argTypes);
+  return binderClient->registerServer(
+      string(name), argTypes, serverHostPort->toString());
 }
 
 int rpcCall(char* name, int* argTypes, void** args) {
@@ -28,14 +32,12 @@ int rpcCall(char* name, int* argTypes, void** args) {
 }
 
 int rpcCacheCall(char* name, int* argTypes, void** args){
-  if (!binderClient) return -1;
 }
 
 int rpcExecute() {
-  if (!binderClient) return -1;
 }
+
 int rpcTerminate() {
-  if (!binderClient) return -1;
 }
 
 

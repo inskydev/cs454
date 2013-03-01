@@ -1,7 +1,7 @@
 
 all: lib
 	# A Server
-	g++ -std=gnu++0x -L. server.cpp -lrpc -o server 
+	g++ -std=gnu++0x -Wno-write-strings -L. server.cpp -lrpc -o server 
 	# A client
 	g++ -std=gnu++0x -L. client.cpp -lrpc -lpthread -o client 
 	# Binder
@@ -12,7 +12,8 @@ lib:
 	g++ -std=gnu++0x -c -g -o util.o util.cpp
 	g++ -std=gnu++0x -c -g -o Transporter.o Transporter.cpp
 	g++ -std=gnu++0x -c -g -o Binder.o Binder.cpp
-	ar rcs librpc.a util.o Transporter.o Binder.o
+	g++ -std=gnu++0x -c -g -o rpc.o rpc.cpp
+	ar rcs librpc.a util.o Transporter.o Binder.o rpc.o
 
 
 clean:

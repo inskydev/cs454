@@ -17,13 +17,13 @@ struct BinderClient {
   Transporter transport;
 };
 
-
 struct Binder {
 
   void handleRequest(const string& msg, int clientSocket);
 
   // member vars for mapping
   map<string, list<HostPort> > mapping;
+  map<int, HostPort> socketHostPortMap;
 };
 
 #endif // BINDER_H

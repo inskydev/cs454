@@ -26,9 +26,9 @@ struct Transporter {
   void connect();
 
   // Client only. Async
-  void query(string msg) {
+  void sendString(string msg) {
     ASSERT(m_sockfd != -1, "Trying to query without connecting");
-    int rc = sendString(m_sockfd, msg);
+    int rc = ::sendString(m_sockfd, msg);
     ASSERT(rc >= 0, "ERROR writing to socket");
   }
 

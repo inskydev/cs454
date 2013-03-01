@@ -155,3 +155,26 @@ string recvString(int sockfd) {
   return s;
 }
 
+int ArgType::get() const {
+  int ret = 0;
+  if (input) {
+    ret |= 1 << ARG_INPUT;
+  }
+  if (output) {
+    ret |= 1 << ARG_OUTPUT;
+  }
+  ret |= type << 16;
+  ret |= num_times;
+}
+
+int* formatArgTypes(const vector<ArgType>& args) {
+  int* ret = new int[args.size() + 1];
+
+  for (int i = 0; i < args.size(); i++) {
+    ret[i] = args.at(i).get();
+  }
+
+  ret[args.size()] = 0;
+
+  return ret;
+}
