@@ -1,0 +1,54 @@
+#include "Server.h"
+
+void Server::execute() {
+  fd_set sockfds;
+  FD_ZERO(&sockfds);
+  FD_SET(listenSocket, &sockfds);
+
+  // One from accept client socket, number of active client socket,
+  // Last 1 for documentation.
+  int highest_fds = listenSocket;
+
+  while (select(highest_fds + 1, &sockfds, NULL, NULL, NULL) >= 0) {
+    if (FD_ISSET(listenSocket, &sockfds)) {
+      // New client is knocking.
+      socklen_t clilen = sizeof(cli_addr);
+      int client = accept(listenSocket, (struct sockaddr*)&cli_addr, &clilen);
+      connected(client);
+      ASSERT(client >= 0, "ERROR on accept");
+      FD_SET(client, &sockfds);
+      clientSockets.push_back(client);
+      highest_fds = std::max(highest_fds, client);
+      continue;
+    }
+
+    // Client wants to interact.
+    bool handled_one = false;
+    for (list<int>::iterator client = clientSockets.begin();
+        client != clientSockets.end();
+        ++client) {
+
+      if (FD_ISSET(*client, &sockfds)) {
+        handled_one = true;
+        string msg = recvString(*client);
+        if (msg.size() == 0) {
+          disconnected(*client);
+          close(*client);
+          clientSockets.erase(client); // Client closed socket.
+        } else {
+          handleRequest(*client, msg);
+        }
+        break;
+      }
+    }
+
+    // Reset sockets that needed to be selected on.
+    FD_ZERO(&sockfds);
+    FD_SET(listenSocket, &sockfds);
+    for (list<int>::iterator client = clientSockets.begin();
+        client != clientSockets.end();
+        ++client) {
+      FD_SET(*client, &sockfds);
+    }
+  } // End select
+}

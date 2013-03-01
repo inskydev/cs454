@@ -13,7 +13,8 @@ lib:
 	g++ -std=gnu++0x -c -g -o Transporter.o Transporter.cpp
 	g++ -std=gnu++0x -c -g -o Binder.o Binder.cpp
 	g++ -std=gnu++0x -c -g -o rpc.o rpc.cpp
-	ar rcs librpc.a util.o Transporter.o Binder.o rpc.o
+	g++ -std=gnu++0x -c -g -o Server.o Server.cpp
+	ar rcs librpc.a util.o Transporter.o Binder.o rpc.o Server.o
 
 
 clean:
