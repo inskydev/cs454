@@ -3,6 +3,7 @@
 *.o
 *.s
 *.map
+*.swp
 *.d
 *.a
 stringServer
@@ -10,4 +11,5 @@ stringClient
 client
 server
 server_hostport
+binder_hostport
 binder

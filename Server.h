@@ -10,7 +10,7 @@
 #include "util.h"
 
 struct Server {
-  Server(bool put_file = false) {
+  Server(HostPort::Type type) {
     int rc;
     listenSocket = socket(AF_INET, SOCK_STREAM, 0);
     ASSERT(listenSocket >= 0, "ERROR opening socket");
@@ -29,9 +29,8 @@ struct Server {
     // Get complete fully qualified name.
     string hostname = exec("hostname -A");
     // Publish hostport value to internet. (so we don't have to set env var)
-    putHostPort(HostPort::SERVER, hostname,
-        std::to_string((long long int)ntohs(serv_addr.sin_port)),
-        put_file);
+    putHostPort(type, hostname,
+        std::to_string((long long int)ntohs(serv_addr.sin_port)));
     hostport.hostname = hostname;
     hostport.port = int(ntohs(serv_addr.sin_port));
   }

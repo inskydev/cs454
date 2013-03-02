@@ -14,6 +14,7 @@ int BinderClient::registerServer(const string& name,
   // Server side map the socket to hostport and append such data.
   string args = normalizeArgs(name, argTypes);
   string msg = string(1, SERVER_REGISTER) + server + "#" + args;
+  cout << msg << endl;
   if (sendString(transport.m_sockfd, msg) < 0) {
     return Error::BINDER_UNREACHEABLE;
   } else {
@@ -24,7 +25,6 @@ int BinderClient::registerServer(const string& name,
 void Binder::handleRequest(int clientSocket, const string& msg) {
   if (msg.size() == 0) {
     // Handle client termination by removing hostport in all mapping.
-
     HostPort hp = socketHostPortMap[clientSocket];
     socketHostPortMap.erase(clientSocket);
 
@@ -40,6 +40,8 @@ void Binder::handleRequest(int clientSocket, const string& msg) {
       }
     }
   } else if (msg[0] == SERVER_REGISTER) {
+    cout << "register" << endl;
+    cout << msg << endl;
     HostPort hp;
     hp.fromString(msg);
 

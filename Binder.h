@@ -6,8 +6,9 @@
 #include "Server.h"
 
 struct BinderClient {
-  BinderClient(HostPort hp)
+  BinderClient(const HostPort& hp)
     : hostport(hp), transport(hp.hostname, hp.port) {
+    transport.connect();
   }
 
   int registerServer(const string& name, int* argTypes, const string& server);
@@ -20,10 +21,10 @@ struct BinderClient {
 
 struct Binder : public Server {
 
-  Binder() : Server() {
+  Binder() : Server(HostPort::BINDER) {
   }
 
-  virtual ~RPCServer() {}
+  virtual ~Binder() {}
 
   virtual void connected(int socketid)  {}
   virtual void disconnected(int socketid) {}

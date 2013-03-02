@@ -19,8 +19,8 @@
 
 #define INPUT true
 #define OUTPUT true
-#define NOT_INPUT true
-#define NOT_OUTPUT true
+#define NOT_INPUT false
+#define NOT_OUTPUT false
 
 struct Error {
   enum TYPE {
@@ -28,6 +28,7 @@ struct Error {
     UNINITIALIZED_BINDER = -2,
     BINDER_UNREACHEABLE = -3,
     UNINITIALIZED_SERVER = -4,
+    NO_BINDER_ADDRESS  = -5,
   };
 };
 
@@ -90,6 +91,7 @@ struct HostPort {
   enum Type {
     SERVER,
     BINDER,
+    NONE,
   };
 
   HostPort()
@@ -116,31 +118,30 @@ struct HostPort {
 
 struct ArgType {
   ArgType(bool input, bool output, int type, int num_times)
-    : input(input), output(output), type(type), num_times(num_times){
-      if (type != ARG_CHAR || type != ARG_SHORT ||
-          type != ARG_INT || type != ARG_LONG ||
-          type != ARG_DOUBLE || type != ARG_FLOAT) {
+    : m_input(input), m_output(output), m_type(type), m_num_times(num_times){
+      if (type != ARG_CHAR   && type != ARG_SHORT &&
+          type != ARG_INT    && type != ARG_LONG  &&
+          type != ARG_DOUBLE && type != ARG_FLOAT) {
         ASSERT(false, "Unknown type %d", type);
       }
       if (num_times > 0xffff) {
         ASSERT(false, "Cannot have array length greater than %d", num_times);
       }
-
     }
 
   int get() const;
 
-  bool input;
-  bool output;
-  int type;      // INT or something else
-  int num_times; // zero means scalar
+  bool m_input;
+  bool m_output;
+  int  m_type;      // INT or something else
+  int  m_num_times; // zero means scalar
 
 };
 
 
 string exec(string cmd);
 
-void putHostPort(HostPort::Type type, string hostname, string port, bool put_file = false);
+void putHostPort(HostPort::Type type, string hostname, string port);
 
 HostPort* getHostPort(HostPort::Type type, bool debug = false, bool use_file = false);
 

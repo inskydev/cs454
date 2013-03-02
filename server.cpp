@@ -12,7 +12,9 @@ using namespace std;
 int main(int argc, char* argv[]) {
 
   /* create sockets and connect to the binder */
-  rpcInit();
+  if (rpcInit()) {
+    cout << "init failed." << endl;
+  }
 
   int* argTypes0 = formatArgTypes(
       {

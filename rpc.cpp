@@ -4,7 +4,7 @@
 #include "Server.h"
 
 struct RPCServer : public Server {
-  RPCServer(bool put_file = false) : Server(put_file) {
+  RPCServer() : Server(HostPort::SERVER) {
   }
 
   virtual ~RPCServer() {}
@@ -16,13 +16,16 @@ struct RPCServer : public Server {
   map<string, skeleton> rpcHandlerMapping;
 };
 
+// =====================================================================
 // Global variables because it has to be.
 BinderClient* binderClient = NULL;
 RPCServer* rpcServer = NULL;
+// =====================================================================
 
 int rpcInit() {
   // Set up connection to binder.
   HostPort* hp = getHostPort(HostPort::BINDER, true, true);
+  if (!hp) return Error::NO_BINDER_ADDRESS;
   binderClient = new BinderClient(*hp);
   delete hp;
 
@@ -32,7 +35,9 @@ int rpcInit() {
   return 0;
 }
 
+// =====================================================================
 int rpcRegister(char* name, int* argTypes, skeleton f) {
+  // TODO, check arguments are not null
   if (!binderClient) return Error::UNINITIALIZED_BINDER;
   if (!rpcServer) return Error::UNINITIALIZED_SERVER;
 
@@ -45,16 +50,20 @@ int rpcRegister(char* name, int* argTypes, skeleton f) {
       string(name), argTypes, rpcServer->hostport.toString());
 }
 
+// =====================================================================
 int rpcCall(char* name, int* argTypes, void** args) {
 
 }
 
+// =====================================================================
 int rpcCacheCall(char* name, int* argTypes, void** args){
 }
 
+// =====================================================================
 int rpcExecute() {
 }
 
+// =====================================================================
 int rpcTerminate() {
 }
 

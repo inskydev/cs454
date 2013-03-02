@@ -12,13 +12,19 @@ std::string exec(string cmd) {
   }
   pclose(pipe);
   // trim newline.
-  if (result.size() && result[result.size()-1] == '\n') {
-    result = result.substr(0, result.size() - 1);
+  if (result.size() && result[result.size() - 1] == '\n') {
+    int i = -1;
+    for (i = result.size() - 1; i >= 0; i--) {
+      if (result[i] != '\n' && result[i] != ' ') {
+        break;
+      }
+    }
+    result = result.substr(0, i+1);
   }
   return result;
 }
 
-void putHostPort(HostPort::Type type, string hostname, string port, bool put_file) {
+void putHostPort(HostPort::Type type, string hostname, string port) {
   string hostEnvVar;
   string portEnvVar;
   string hostPortFile;
@@ -38,16 +44,14 @@ void putHostPort(HostPort::Type type, string hostname, string port, bool put_fil
   cout << hostEnvVar << " " << hostname << endl;
   cout << portEnvVar << " " << port << endl;
 
-  if (put_file) {
-    string user(getenv("USER"));
+  string user(getenv("USER"));
 
-    string cmd1 = "echo " + hostname +
-      " >  /u9/" + user + "/public_html/" + hostPortFile;
-    string cmd2 = "echo " + port +
-      " >> /u9/" + user + "/public_html/" + hostPortFile;
-    system(cmd1.c_str());
-    system(cmd2.c_str());
-  }
+  string cmd1 = "echo " + hostname +
+    " >  /u9/" + user + "/public_html/" + hostPortFile;
+  string cmd2 = "echo " + port +
+    " >> /u9/" + user + "/public_html/" + hostPortFile;
+  system(cmd1.c_str());
+  system(cmd2.c_str());
 }
 
 HostPort* getHostPort(HostPort::Type type, bool debug, bool use_file) {
@@ -84,12 +88,15 @@ HostPort* getHostPort(HostPort::Type type, bool debug, bool use_file) {
     system(wget_cmd.c_str());
     ifstream f(hostPortFile, ios::in);
     if (f.is_open()) {
-      cout << "Using server published hostport." << endl;
-      ret = new HostPort();
-      getline(f, ret->hostname);
-      string tmp;
-      getline(f, tmp);
-      ret->port = atoi(tmp.c_str());
+      string str;
+      getline(f, str);
+      if (str.size()) {
+        cout << "Using " << hostPortFile << endl;
+        ret = new HostPort();
+        ret->hostname = str;
+        getline(f, str);
+        ret->port = atoi(str.c_str());
+      }
     }
     f.close();
   }
@@ -157,14 +164,15 @@ string recvString(int sockfd) {
 
 int ArgType::get() const {
   int ret = 0;
-  if (input) {
-    ret |= 1 << ARG_INPUT;
+  if (m_input) {
+    ret |= (1 << ARG_INPUT);
   }
-  if (output) {
+  if (m_output) {
     ret |= 1 << ARG_OUTPUT;
   }
-  ret |= type << 16;
-  ret |= num_times;
+  ret |= m_type << 16;
+  ret |= m_num_times;
+  return ret;
 }
 
 int* formatArgTypes(const vector<ArgType>& args) {
@@ -202,8 +210,8 @@ string normalizeArgs(const string& name, int* argTypes) {
     } else {
       *start++ = ' ';
     }
-    a &= 0x4fffffff; // Chop off top 30bits.
-    int arg_type = (a >> 24);
+    a = (a << 2) >> 2; // chop off top two bits.
+    int arg_type = (a >> 16); // chop off bottom 16 bits
     *start++ = '0' + arg_type;
     int arg_len = (a & 0xffff); // Lower 16 bit is length
     *start++ = arg_len > 0 ? 'A' : 'S';

@@ -10,7 +10,9 @@ void Server::execute() {
   int highest_fds = listenSocket;
 
   while (select(highest_fds + 1, &sockfds, NULL, NULL, NULL) >= 0) {
+    cout << "selected" << endl;
     if (FD_ISSET(listenSocket, &sockfds)) {
+      cout << "new client" << endl;
       // New client is knocking.
       socklen_t clilen = sizeof(cli_addr);
       int client = accept(listenSocket, (struct sockaddr*)&cli_addr, &clilen);
