@@ -39,8 +39,8 @@ struct Server {
     close(listenSocket);
   }
 
-  // Infinite loop on selecting from sockets.
-  void execute();
+  // Loop on selecting from sockets until termination signal.
+  int execute();
 
   virtual void connected(int socketid) = 0;
   virtual void disconnected(int socketid) = 0;
@@ -51,6 +51,8 @@ struct Server {
   list<int> clientSockets;
   struct sockaddr_in serv_addr, cli_addr;
   HostPort hostport;
+  Counter terminate;
+  Counter terminating;
 };
 
 #endif // SERVER_H_

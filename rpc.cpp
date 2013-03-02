@@ -11,7 +11,12 @@ struct RPCServer : public Server {
 
   virtual void connected(int socketid)  {}
   virtual void disconnected(int socketid) {}
-  virtual void handleRequest(int socketid, const string& msg) {}
+  virtual void handleRequest(int socketid, const string& msg) {
+    if (msg[0] == 'T') {
+      ++terminate;
+    }
+    // TODO, handle client requests
+  }
 
   map<string, skeleton> rpcHandlerMapping;
 };
@@ -61,10 +66,13 @@ int rpcCacheCall(char* name, int* argTypes, void** args){
 
 // =====================================================================
 int rpcExecute() {
+  if (!binderClient) return Error::UNINITIALIZED_BINDER;
+  if (!rpcServer) return Error::UNINITIALIZED_SERVER;
+  return rpcServer->execute();
 }
 
 // =====================================================================
 int rpcTerminate() {
+  if (!binderClient) return Error::UNINITIALIZED_BINDER;
+  return binderClient->terminateAll();
 }
-
-

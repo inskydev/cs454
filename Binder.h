@@ -15,6 +15,9 @@ struct BinderClient {
 
   void locateServer();
 
+  // TODO Test this (implemented)
+  int terminateAll();
+
   HostPort hostport; // Binder hostport
   Transporter transport;
 };
@@ -27,7 +30,11 @@ struct Binder : public Server {
   virtual ~Binder() {}
 
   virtual void connected(int socketid)  {}
-  virtual void disconnected(int socketid) {}
+
+  // Remove all RPCs provided by the server.
+  virtual void disconnected(int socketid);
+
+  // Server register or client locate requests.
   virtual void handleRequest(int socketid, const string& msg);
 
   // member vars for mapping

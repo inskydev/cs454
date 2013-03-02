@@ -2,6 +2,7 @@
 
 #define SERVER_REGISTER   'R'
 #define CLIENT_LOCATE     'L'
+#define TERMINATE_ALL     'T'
 #define NONE_REGISTERED   "NONE_REGISTERED"
 #define REREGISTER        "REREGISTER"
 #define REGISTER_DONE     "DONE"
@@ -15,31 +16,43 @@ int BinderClient::registerServer(const string& name,
   string args = normalizeArgs(name, argTypes);
   string msg = string(1, SERVER_REGISTER) + server + "#" + args;
   cout << msg << endl;
-  if (sendString(transport.m_sockfd, msg) < 0) {
+  if (transport.sendString(msg) < 0) {
     return Error::BINDER_UNREACHEABLE;
   } else {
     return 0;
   }
 }
 
-void Binder::handleRequest(int clientSocket, const string& msg) {
-  if (msg.size() == 0) {
-    // Handle client termination by removing hostport in all mapping.
-    HostPort hp = socketHostPortMap[clientSocket];
-    socketHostPortMap.erase(clientSocket);
+int BinderClient::terminateAll() {
+  if (transport.sendString(string(1, TERMINATE_ALL)) < 0) {
+    return Error::BINDER_UNREACHEABLE;
+  } else {
+    return 0;
+  }
+}
 
-    for (map<string, list<HostPort> >::iterator m = mapping.begin();
-        m != mapping.end();
-        m++) {
-      for (list<HostPort>::iterator l = m->second.begin(); l == m->second.end(); l++)
-      {
-        if (hp == *l) {
-          m->second.erase(l);
-          break;
-        }
+void Binder::disconnected(int clientSocket) {
+  // Handle client termination by removing hostport in all mapping.
+  HostPort hp = socketHostPortMap[clientSocket];
+  socketHostPortMap.erase(clientSocket);
+
+  for (map<string, list<HostPort> >::iterator m = mapping.begin();
+      m != mapping.end();
+      m++) {
+    for (list<HostPort>::iterator l = m->second.begin(); l == m->second.end(); l++)
+    {
+      if (hp == *l) {
+        m->second.erase(l);
+        break;
       }
     }
-  } else if (msg[0] == SERVER_REGISTER) {
+  }
+
+  if (socketHostPortMap.size() == 0) ++terminate;
+}
+
+void Binder::handleRequest(int clientSocket, const string& msg) {
+  if (msg[0] == SERVER_REGISTER) {
     cout << "register" << endl;
     cout << msg << endl;
 
@@ -80,8 +93,17 @@ void Binder::handleRequest(int clientSocket, const string& msg) {
       l.pop_front();
     } else {
       // does not have mapping yet.
-      // FIXME: memory leak since unmapped apis are never removed.
       sendString(clientSocket, NONE_REGISTERED);
+    }
+  } else if (msg[0] == TERMINATE_ALL) {
+    // Do not accept new connections
+    ++terminating;
+    if (socketHostPortMap.size() == 0) ++terminate;
+    // Send message to all servers to terminate.
+    for (map<int, HostPort>::iterator i = socketHostPortMap.begin();
+        i != socketHostPortMap.end();
+        i++) {
+      sendString(i->first, msg);
     }
   } else {
     sendString(clientSocket, MALFORMED_REQUEST);

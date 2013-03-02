@@ -1,6 +1,6 @@
 #include "Server.h"
 
-void Server::execute() {
+int Server::execute() {
   fd_set sockfds;
   FD_ZERO(&sockfds);
   FD_SET(listenSocket, &sockfds);
@@ -9,7 +9,8 @@ void Server::execute() {
   // Last 1 for documentation.
   int highest_fds = listenSocket;
 
-  while (select(highest_fds + 1, &sockfds, NULL, NULL, NULL) >= 0) {
+  while (terminate.get() == 0 &&
+      select(highest_fds + 1, &sockfds, NULL, NULL, NULL) >= 0) {
     cout << "selected" << endl;
     if (FD_ISSET(listenSocket, &sockfds)) {
       cout << "new client" << endl;
@@ -38,6 +39,7 @@ void Server::execute() {
           close(*client);
           clientSockets.erase(client); // Client closed socket.
         } else {
+          // TODO, fork here to handle multiple requests.
           handleRequest(*client, msg);
         }
         break;
@@ -46,11 +48,15 @@ void Server::execute() {
 
     // Reset sockets that needed to be selected on.
     FD_ZERO(&sockfds);
-    FD_SET(listenSocket, &sockfds);
+    if (terminating.get() == 0) {
+      FD_SET(listenSocket, &sockfds);
+    }
     for (list<int>::iterator client = clientSockets.begin();
         client != clientSockets.end();
         ++client) {
       FD_SET(*client, &sockfds);
     }
   } // End select
+
+  return 0;
 }
