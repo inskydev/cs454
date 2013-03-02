@@ -107,9 +107,9 @@ struct HostPort {
   }
 
   void fromString(const string& msg) {
-    size_t port = msg.find(':');
-    hostname = msg.substr(1, port); // Skip msg header type
-    port = atoi(string(msg.substr(port+1, msg.find('#') - port + 1)).c_str());
+    size_t delim = msg.find(':');
+    hostname = msg.substr(0, delim);
+    port = atoi(msg.substr(delim+1).c_str());
   }
 
   string hostname;

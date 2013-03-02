@@ -42,15 +42,16 @@ void Binder::handleRequest(int clientSocket, const string& msg) {
   } else if (msg[0] == SERVER_REGISTER) {
     cout << "register" << endl;
     cout << msg << endl;
+
+    string hostportStr = msg.substr(1, msg.find('#') - 1);
     HostPort hp;
-    hp.fromString(msg);
+    hp.fromString(hostportStr);
 
     string key = msg.substr(msg.find('#')+1);
     // Remember hostport mapping for client disconnection.
     socketHostPortMap[clientSocket] = hp;
 
     map<string, list<HostPort> >::iterator s = mapping.find(key);
-
     if (s == mapping.end()) {
       mapping[key].push_front(hp);
     } else {
