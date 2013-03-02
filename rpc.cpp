@@ -57,6 +57,68 @@ int rpcRegister(char* name, int* argTypes, skeleton f) {
 
 // =====================================================================
 int rpcCall(char* name, int* argTypes, void** args) {
+	
+  binderClient->locateServer(string(name), argTypes);
+  //get reply from binder
+  string serverMsg = recvString(binderClient->transport.m_sockfd);
+  
+  HostPort *hpServer;
+  hpServer->fromString(serverMsg);
+  
+  //marshall inputs
+  string request = normalizeArgs(name, argTypes);
+  request+="#";
+  
+  void** it=args;
+  int* at = argTypes;
+  for (;it;it++,at++){
+    //need to know how to incremeant the ptrs of different size
+    
+    char* curr = (char*)*it;
+    
+    while (curr){
+    
+      char* buffer = (char*)malloc(sizeof(double));
+      memset(buffer, 0, sizeof(double));
+      
+      switch(*at){
+        
+        case ARG_CHAR:
+          memcpy(curr, buffer, sizeof(char));
+          curr += sizeof(char);
+          break;
+        case ARG_SHORT:
+          memcpy(curr, buffer, sizeof(short));
+          curr += sizeof(short);
+          break;
+        case ARG_INT:
+          memcpy(curr, buffer, sizeof(int));
+          curr += sizeof(int);
+          break;
+        case ARG_LONG:
+          memcpy(curr, buffer, sizeof(long));
+          curr += sizeof(long);
+          break;
+        case ARG_DOUBLE:
+          memcpy(curr, buffer, sizeof(double));
+          curr += sizeof(double);
+          break;
+        case ARG_FLOAT:
+          memcpy(curr, buffer, sizeof(float));
+          curr += sizeof(float);
+          break;
+      }
+      request+=(string)buffer;
+      
+      delete buffer;
+    }
+  }
+  Transporter transServer(hpServer->hostname, hpServer->port);
+  transServer.connect();
+  
+  //request should have everything now
+  return sendString(transServer.m_sockfd, request);
+    
 
 }
 

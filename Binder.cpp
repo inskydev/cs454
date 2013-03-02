@@ -31,6 +31,20 @@ int BinderClient::terminateAll() {
   }
 }
 
+
+int BinderClient::locateServer(const string& name, int* argType){
+  
+  string args = normalizeArgs(name, argType);
+  string msg = string(1, CLIENT_LOCATE) + "#" + args;
+  if (sendString(transport.m_sockfd, msg) < 0) {
+    return Error::BINDER_UNREACHEABLE;
+  } else {
+    return 0;
+  }
+}
+
+
+
 void Binder::disconnected(int clientSocket) {
   // Handle client termination by removing hostport in all mapping.
   HostPort hp = socketHostPortMap[clientSocket];
