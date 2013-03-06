@@ -75,42 +75,47 @@ int rpcCall(char* name, int* argTypes, void** args) {
   
   void** it=args;
   int* at = argTypes;
-  for (;it;it++,at++){
+  for (;(*at);it++,at++){
     //need to know how to increment the ptrs of different size
     
     char* curr = (char*)*it;
+    int type = ((*at)>>16) & 0xFF;
+    int length = ((*at)) & 0xFF;
+    if (!length)
+      length = 1;
     
-    while (curr){
-    
+    for (int i =0; i<length; i++){
       char* buffer = (char*)malloc(sizeof(double));
       memset(buffer, 0, sizeof(double));
       
-      switch((*at) && 0xFF0000 ){
+      switch(type){
         
         case ARG_CHAR:
-          memcpy(curr, buffer, sizeof(char));
+          memcpy(buffer, curr, sizeof(char));
           curr += sizeof(char);
           break;
         case ARG_SHORT:
-          memcpy(curr, buffer, sizeof(short));
+          memcpy(buffer, curr, sizeof(short));
           curr += sizeof(short);
           break;
         case ARG_INT:
-          memcpy(curr, buffer, sizeof(int));
+          memcpy(buffer, curr, sizeof(int));
           curr += sizeof(int);
           break;
         case ARG_LONG:
-          memcpy(curr, buffer, sizeof(long));
+          memcpy(buffer, curr, sizeof(long));
           curr += sizeof(long);
           break;
         case ARG_DOUBLE:
-          memcpy(curr, buffer, sizeof(double));
+          memcpy(buffer, curr, sizeof(double));
           curr += sizeof(double);
           break;
         case ARG_FLOAT:
-          memcpy(curr, buffer, sizeof(float));
+          memcpy(buffer, curr, sizeof(float));
           curr += sizeof(float);
           break;
+        default:
+          printf("error type\n");
       }
       request+=(string)buffer;
       
@@ -133,46 +138,51 @@ int rpcCall(char* name, int* argTypes, void** args) {
   
   strcpy(cpString, processedString.c_str());
   
+  while (*cpString != '#')
+    cpString ++;
   
   it=args;
   at = argTypes;
-  for (;it;it++,at++){
+  for (;(*at);it++,at++){
     //need to know how to increment the ptrs of different size
     
     char* curr = (char*)*it;
     
-    while (curr){
+    int type = ((*at)>>16) & 0xFF;
+    int length = ((*at)) & 0xFF;
     
-      //char* buffer = (char*)malloc(sizeof(double));
-      //memset(buffer, 0, sizeof(double));
+    if (!length)
+      length = 1;
+    
+    for (int i =0; i<length; i++){
       
       if (!((*at) && 0x80000000)) //check if this is output
         break; 
         
-      switch(*at){
+      switch(((*at)>>16) & 0xFF ){
         
         case ARG_CHAR:
-          memcpy(cpString, curr, sizeof(char));
+          memcpy(curr, cpString, sizeof(char));
           cpString += sizeof(char);
           break;
         case ARG_SHORT:
-          memcpy(cpString, curr, sizeof(short));
+          memcpy(curr, cpString, sizeof(short));
           cpString += sizeof(short);
           break;
         case ARG_INT:
-          memcpy(cpString, curr, sizeof(int));
+          memcpy(curr, cpString, sizeof(int));
           cpString += sizeof(int);
           break;
         case ARG_LONG:
-          memcpy(cpString, curr, sizeof(long));
+          memcpy(curr, cpString, sizeof(long));
           cpString += sizeof(long);
           break;
         case ARG_DOUBLE:
-          memcpy(cpString, curr, sizeof(double));
+          memcpy(curr, cpString, sizeof(double));
           cpString += sizeof(double);
           break;
         case ARG_FLOAT:
-          memcpy(cpString, curr, sizeof(float));
+          memcpy(curr, cpString, sizeof(float));
           cpString += sizeof(float);
           break;
       }
