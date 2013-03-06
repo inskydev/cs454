@@ -1,0 +1,9 @@
+Testcase:
+
+rpcTerminate with only binder running
+rpcTerminate with binder and server
+
+
+Questions:
+need to check for invalid argtypes?
+

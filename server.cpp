@@ -24,8 +24,7 @@ int main(int argc, char* argv[]) {
 
   rpcRegister("f0", argTypes0, NULL);
 
-  rpcTerminate();
-
+  rpcExecute();
 
   return 0;
 }

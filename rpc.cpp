@@ -31,13 +31,17 @@ int rpcInit() {
   // Set up connection to binder.
   HostPort* hp = getHostPort(HostPort::BINDER, true, true);
   if (!hp) return Error::NO_BINDER_ADDRESS;
-  binderClient = new BinderClient(*hp);
-  delete hp;
 
-  // Set up ports to accept (but have not started accepting yet);
-  rpcServer = new RPCServer();
+  try {
+    binderClient = new BinderClient(*hp);
+    delete hp;
 
-  return 0;
+    // Set up ports to accept (but have not started accepting yet);
+    rpcServer = new RPCServer();
+    return 0;
+  } catch (int i) {
+    return i;
+  }
 }
 
 // =====================================================================
