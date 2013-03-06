@@ -155,7 +155,7 @@ string recvString(int sockfd) {
     if (rc < 0) return "";
     num_bytes += rc;
   }
-  buffer[size] = NULL; // null terminate.
+  buffer[size - 1] = NULL; // null terminate.
   string s(buffer);
   delete [] buffer;
 
