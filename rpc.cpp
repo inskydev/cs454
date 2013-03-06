@@ -76,7 +76,7 @@ int rpcCall(char* name, int* argTypes, void** args) {
   void** it=args;
   int* at = argTypes;
   for (;it;it++,at++){
-    //need to know how to incremeant the ptrs of different size
+    //need to know how to increment the ptrs of different size
     
     char* curr = (char*)*it;
     
@@ -85,7 +85,7 @@ int rpcCall(char* name, int* argTypes, void** args) {
       char* buffer = (char*)malloc(sizeof(double));
       memset(buffer, 0, sizeof(double));
       
-      switch(*at){
+      switch((*at) && 0xFF0000 ){
         
         case ARG_CHAR:
           memcpy(curr, buffer, sizeof(char));
@@ -121,8 +121,65 @@ int rpcCall(char* name, int* argTypes, void** args) {
   transServer.connect();
   
   //request should have everything now
-  return sendString(transServer.m_sockfd, request);
+  sendString(transServer.m_sockfd, request);
+  
+  
+  //take the reply and shove the parameters back to the pointers
+  string processedString = recvString(transServer.m_sockfd);
+  
+  char* cpString = new char[processedString.length()+1];
+  
+  processedString.c_str();
+  
+  strcpy(cpString, processedString.c_str());
+  
+  
+  it=args;
+  at = argTypes;
+  for (;it;it++,at++){
+    //need to know how to increment the ptrs of different size
     
+    char* curr = (char*)*it;
+    
+    while (curr){
+    
+      //char* buffer = (char*)malloc(sizeof(double));
+      //memset(buffer, 0, sizeof(double));
+      
+      if (!((*at) && 0x80000000)) //check if this is output
+        break; 
+        
+      switch(*at){
+        
+        case ARG_CHAR:
+          memcpy(cpString, curr, sizeof(char));
+          cpString += sizeof(char);
+          break;
+        case ARG_SHORT:
+          memcpy(cpString, curr, sizeof(short));
+          cpString += sizeof(short);
+          break;
+        case ARG_INT:
+          memcpy(cpString, curr, sizeof(int));
+          cpString += sizeof(int);
+          break;
+        case ARG_LONG:
+          memcpy(cpString, curr, sizeof(long));
+          cpString += sizeof(long);
+          break;
+        case ARG_DOUBLE:
+          memcpy(cpString, curr, sizeof(double));
+          cpString += sizeof(double);
+          break;
+        case ARG_FLOAT:
+          memcpy(cpString, curr, sizeof(float));
+          cpString += sizeof(float);
+          break;
+      }
+    }
+  }
+  
+  return 0;
 
 }
 
