@@ -8,8 +8,11 @@
 #include <sys/select.h>
 #include <netinet/in.h>
 #include "util.h"
+#include <pthread.h>
 
 struct Server {
+  static void* thread_run(void* server);
+
   Server(HostPort::Type type) {
     int rc;
     listenSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -33,6 +36,12 @@ struct Server {
         std::to_string((long long int)ntohs(serv_addr.sin_port)));
     hostport.hostname = hostname;
     hostport.port = int(ntohs(serv_addr.sin_port));
+
+    for (int i = 0; i < 10; i++) {
+      workers.push_back(pthread_t());
+      pthread_t* worker = &workers.back();
+      pthread_create(worker, NULL, thread_run, this);
+    }
   }
 
   virtual ~Server() {
@@ -53,6 +62,10 @@ struct Server {
   HostPort hostport;
   Counter terminate;
   Counter terminating;
+
+  // Pairs of client id and message.
+  Channel<pair<int, string>> workItems;
+  list<pthread_t> workers;
 };
 
 #endif // SERVER_H_

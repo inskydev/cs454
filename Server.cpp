@@ -1,5 +1,13 @@
 #include "Server.h"
 
+void* Server::thread_run(void* s) {
+  Server* server = (Server*)s;
+  while (server->terminate.get() == 0) {
+    pair<int, string> work = server->workItems.get();
+    server->handleRequest(work.first, work.second);
+  }
+}
+
 int Server::execute() {
   fd_set sockfds;
   FD_ZERO(&sockfds);
@@ -39,8 +47,7 @@ int Server::execute() {
           close(*client);
           clientSockets.erase(client); // Client closed socket.
         } else {
-          // TODO, fork here to handle multiple requests.
-          handleRequest(*client, msg);
+          workItems.put(make_pair(*client, msg));
         }
         break;
       }

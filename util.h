@@ -12,6 +12,7 @@
 #include <fstream>
 #include <stdint.h>
 #include <strings.h>
+#include <semaphore.h>
 #include "rpc.h"
 
 #define STRINGIFY(x) #x
@@ -87,6 +88,40 @@ struct Counter {
 };
 
 
+
+template<class T>
+struct Channel {
+  Channel() {
+    int rc = sem_init(&read_sem, 0, 0);
+    ASSERT(rc == 0, "What");
+  }
+
+  void put(const T& t) {
+    lock.lock();
+    buffer.push_back(t);
+    sem_post(&read_sem);
+    lock.unlock();
+  }
+
+  // Blocking get.
+  T get() {
+    sem_wait(&read_sem);
+
+    // There is something to read.
+    lock.lock();
+    T ret = buffer.front();
+    buffer.pop_back();
+    lock.unlock();
+
+    return ret;
+  }
+
+  sem_t read_sem;
+  PMutex lock;
+
+  list<T> buffer;
+};
+
 struct HostPort {
   enum Type {
     SERVER,
@@ -135,7 +170,6 @@ struct ArgType {
   bool m_output;
   int  m_type;      // INT or something else
   int  m_num_times; // zero means scalar
-
 };
 
 

@@ -33,7 +33,6 @@ int BinderClient::terminateAll() {
 
 
 int BinderClient::locateServer(const string& name, int* argType){
-  
   string args = normalizeArgs(name, argType);
   string msg = string(1, CLIENT_LOCATE) + "#" + args;
   if (sendString(transport.m_sockfd, msg) < 0) {
@@ -41,6 +40,10 @@ int BinderClient::locateServer(const string& name, int* argType){
   } else {
     return 0;
   }
+
+  // Block on receive. if RPC is guranteed to be single threaded.
+  // a
+
 }
 
 
