@@ -80,6 +80,7 @@ void Binder::disconnected(int clientSocket) {
 
 void Binder::handleRequest(int clientSocket, const string& msg) {
   // NOTE, this must be single threaded.
+  cout << "handle:" << msg << endl;
 
   if (msg[0] == SERVER_REGISTER) {
     cout << "register" << endl;

@@ -114,7 +114,7 @@ struct Channel {
     // There is something to read.
     lock.lock();
     T ret = buffer.front();
-    buffer.pop_back();
+    buffer.pop_front();
     lock.unlock();
 
     return ret;

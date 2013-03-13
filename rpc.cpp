@@ -11,7 +11,13 @@ struct RPCServer : public Server {
   RPCServer() : Server(HostPort::SERVER, 10) {
   }
 
-  virtual ~RPCServer() {}
+  virtual ~RPCServer() {
+    map<string, int*>::iterator beg = rpcArgsMapping.begin();
+    map<string, int*>::iterator end = rpcArgsMapping.end();
+    for (; beg != end; beg++) {
+      delete [] beg->second;
+    }
+  }
 
   virtual void connected(int socketid)  {}
   virtual void disconnected(int socketid) {}
@@ -33,21 +39,71 @@ struct RPCServer : public Server {
       } else {
         cout << "Supported" << endl;
         // Iterate through each argument check array length.
-        const list<int>& args = rpcArgsMapping[normalized];
-        string argsStr = msg.substr(msg.find('#') + 1);
+        int* args = rpcArgsMapping[normalized];
+        int len = 0; while (args[len] != 0) len++;
+        string argStr = msg.substr(msg.find('#') + 1);
+        cout << argStr << endl;
+        bool arrayLenWarning = false;
+
         int aa;
-        void** param = NULL;
-        if (!argsStr.empty()) {
-          cout << "not empty" << endl;
-          it->second(&aa, param);
-          cout << argsStr << endl;
-          // Read the first args.
-          string num = argsStr.substr(0, argsStr.find(':'));
-          cout << num << endl;
+        void** param = (void**) malloc(sizeof(void*) * len);
+        // For every argument.
+        for (int l = 0; l < len; l++) {
+          ASSERT(not argStr.empty(), "need more stirng to process");
+          int type = (args[l] >> 16) & 0xFF;
+          int length = (args[l]) & 0xFF;
+
+          size_t delim_position = argStr.find(':');
+          int actualLength = atoi(argStr.substr(0, delim_position).c_str());
+          cout << argStr.substr(0, delim_position) << endl;
+          cout << actualLength << endl;
+          if (actualLength > length) arrayLenWarning = true;
+
+          void* argument = NULL;
+          if (type == ARG_CHAR) {
+            char* v = new char[actualLength];
+            argument = v;
+          } else if (type == ARG_SHORT) {
+            short* v = new short[actualLength];
+            argument = v;
+          } else if (type == ARG_INT) {
+            int* v = new int[actualLength];
+            argument = v;
+          } else if (type == ARG_LONG) {
+            long* v = new long[actualLength];
+            argument = v;
+          } else if (type == ARG_DOUBLE) {
+            double* v = new double[actualLength];
+            argument = v;
+          } else if (type == ARG_FLOAT) {
+            float* v = new float[actualLength];
+            argument = v;
+          } else {
+            ASSERT(false, "Invalid type");
+          }
+
+          argStr = argStr.substr(delim_position);
+          cout << argStr << endl;
+          for (int a = 0; a < actualLength; a++) {
+            if (type == ARG_CHAR) {
+              char* v = (char*) argument;
+              v[a] = argStr.at(a);
+              argStr = argStr.substr(sizeof(char));
+            } else if (type == ARG_SHORT) {
+            } else if (type == ARG_INT) {
+            } else if (type == ARG_LONG) {
+            } else if (type == ARG_DOUBLE) {
+            } else if (type == ARG_FLOAT) {
+            } else {
+              ASSERT(false, "Invalid type");
+            }
+          }
         }
-        cout << "calling" << endl;
-        int rc = it->second(&aa, param);
-        cout << "ret:" << rc << endl;
+        //cout << "calling" << endl;
+        //int rc = it->second(&aa, param);
+        //cout << "ret:" << rc << endl;
+        //free(param);
+        // TODO deletes,
         // TODO, loop through output params and send them back.
       }
       // check with rpcHandlerMapping again
@@ -57,7 +113,7 @@ struct RPCServer : public Server {
   }
 
   map<string, skeleton> rpcHandlerMapping;
-  map<string, list<int>> rpcArgsMapping;
+  map<string, int*> rpcArgsMapping;
 };
 
 // =====================================================================
@@ -101,12 +157,13 @@ int rpcRegister(char* name, int* argTypes, skeleton f) {
   // Register at local server handler.
   string args = normalizeArgs(string(name), argTypes);
   rpcServer->rpcHandlerMapping[args] = f;
-  list<int> argsList;
-  while (*argTypes != 0) {
-    argsList.push_back(*argTypes);
-    argTypes++;
+  int len = 0;
+  while (argTypes[len] != 0) {
+    len++;
   }
-  rpcServer->rpcArgsMapping[args] = argsList;
+  int* argTypesCopy = new int[len + 1];
+  memcpy(argTypesCopy, argTypes, sizeof(int) * len + 1);
+  rpcServer->rpcArgsMapping[args] = argTypesCopy;
 
   // Notify binder that the server is ready.
   return binderClient->registerServer(
@@ -145,39 +202,33 @@ int rpcCall(char* name, int* argTypes, void** args) {
     request += to_string((long long int)length);
     request += ":";
 
-    for (int i =0; i<length; i++){
-      char buffer[16];
-      memset(buffer, 0, 16);
-
-      switch (type) {
-        case ARG_CHAR:
-          memcpy(buffer, curr, sizeof(char));
-          curr += sizeof(char);
-          break;
-        case ARG_SHORT:
-          memcpy(buffer, curr, sizeof(short));
-          curr += sizeof(short);
-          break;
-        case ARG_INT:
-          memcpy(buffer, curr, sizeof(int));
-          curr += sizeof(int);
-          break;
-        case ARG_LONG:
-          memcpy(buffer, curr, sizeof(long));
-          curr += sizeof(long);
-          break;
-        case ARG_DOUBLE:
-          memcpy(buffer, curr, sizeof(double));
-          curr += sizeof(double);
-          break;
-        case ARG_FLOAT:
-          memcpy(buffer, curr, sizeof(float));
-          curr += sizeof(float);
-          break;
-        default:
-          printf("error type\n");
+    for (int i =0; i<length; i++) {
+      if (type == ARG_CHAR) {
+        request += string(*curr, 1) + ";";
+        curr += sizeof(char);
+      } else if (type == ARG_SHORT) {
+        long long int value = *(short*)curr;
+        request += to_string(value) + ";";
+        curr += sizeof(short);
+      } else if (type == ARG_INT) {
+        long long int value = *(int*)curr;
+        request += to_string(value) + ";";
+        curr += sizeof(int);
+      } else if (type == ARG_LONG) {
+        long long int value = *(long*)curr;
+        request += to_string(value) + ";";
+        curr += sizeof(long);
+      } else if (type == ARG_DOUBLE) {
+        long double value = *(double*)curr;
+        request += to_string(value) + ";";
+        curr += sizeof(double);
+      } else if (type == ARG_FLOAT) {
+        long double value = *(float*)curr;
+        request += to_string(value) + ";";
+        curr += sizeof(float);
+      } else {
+        printf("error type\n");
       }
-      request += string(buffer);
     }
   }
   Transporter transServer(hpServer.hostname, hpServer.port);

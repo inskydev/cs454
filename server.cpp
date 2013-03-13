@@ -13,6 +13,12 @@ int f0(int *argTypes, void **args) {
   return 3;
 }
 
+int f1(int *argTypes, void **args) {
+  return 2;
+}
+
+
+
 int main(int argc, char* argv[]) {
 
   /* create sockets and connect to the binder */
@@ -23,16 +29,15 @@ int main(int argc, char* argv[]) {
   cout << "init done." << endl;
 
 
-  //int* argTypes0 = formatArgTypes(
-  //    {
-  //      ArgType(INPUT, OUTPUT, ARG_CHAR, 0),
-  //      ArgType(INPUT, NOT_OUTPUT, ARG_INT, 2)
-  //    });
-  // rpcRegister("f0", argTypes0, NULL);
-
   // (Takes nothing, return nothing), no funciton implemented
   int a = 0;
   rpcRegister("f0", &a, f0);
+
+  int* a1 = formatArgTypes(
+      {
+        ArgType(INPUT, OUTPUT, ARG_CHAR, 0),
+      });
+  rpcRegister("f1", a1, f1);
 
   rpcExecute();
 
