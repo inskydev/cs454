@@ -3,7 +3,9 @@
 void* Server::thread_run(void* s) {
   Server* server = (Server*)s;
   while (server->terminate.get() == 0) {
+    cout << "Thread running" << endl;
     pair<int, string> work = server->workItems.get();
+    cout << "Got work" << endl;
     server->handleRequest(work.first, work.second);
   }
 }
@@ -41,12 +43,14 @@ int Server::execute() {
 
       if (FD_ISSET(*client, &sockfds)) {
         handled_one = true;
-        string msg = recvString(*client);
-        if (msg.size() == 0) {
+        string msg;
+        int rc = recvString(*client, msg);
+        if (rc < 0) {
           disconnected(*client);
           close(*client);
           clientSockets.erase(client); // Client closed socket.
         } else {
+          cout << "put in work items" << endl;
           workItems.put(make_pair(*client, msg));
         }
         break;
@@ -65,5 +69,6 @@ int Server::execute() {
     }
   } // End select
 
+  cout << "Server.cpp Leaving" << endl;
   return 0;
 }

@@ -15,7 +15,6 @@ int BinderClient::registerServer(const string& name,
   // Server side map the socket to hostport and append such data.
   string args = normalizeArgs(name, argTypes);
   string msg = string(1, SERVER_REGISTER) + server + "#" + args;
-  cout << msg << endl;
   if (transport.sendString(msg) < 0) {
     return Error::BINDER_UNREACHEABLE;
   } else {
@@ -32,21 +31,25 @@ int BinderClient::terminateAll() {
 }
 
 
-int BinderClient::locateServer(const string& name, int* argType){
+int BinderClient::locateServer(const string& name, int* argType, HostPort* hp) {
   string args = normalizeArgs(name, argType);
   string msg = string(1, CLIENT_LOCATE) + "#" + args;
   if (sendString(transport.m_sockfd, msg) < 0) {
     return Error::BINDER_UNREACHEABLE;
-  } else {
-    return 0;
   }
 
-  // Block on receive. if RPC is guranteed to be single threaded.
-  // a
+  //get reply from binder
+  string serverMsg;
+  int rc = recvString(transport.m_sockfd, serverMsg);
+  if (rc < 0) return rc;
 
+  if (serverMsg == NONE_REGISTERED) {
+    return Error::NO_SERVER_WITH_ARGTYPE;
+  }
+
+  hp->fromString(serverMsg);
+  return 0;
 }
-
-
 
 void Binder::disconnected(int clientSocket) {
   // Handle client termination by removing hostport in all mapping.
@@ -65,10 +68,12 @@ void Binder::disconnected(int clientSocket) {
     }
   }
 
-  if (socketHostPortMap.size() == 0) ++terminate;
+  if (terminating.get() && socketHostPortMap.size() == 0) ++terminate;
 }
 
 void Binder::handleRequest(int clientSocket, const string& msg) {
+  // NOTE, this must be single threaded.
+
   if (msg[0] == SERVER_REGISTER) {
     cout << "register" << endl;
     cout << msg << endl;
@@ -83,6 +88,7 @@ void Binder::handleRequest(int clientSocket, const string& msg) {
 
     map<string, list<HostPort> >::iterator s = mapping.find(key);
     if (s == mapping.end()) {
+      cout << "registered key" << key << endl;
       mapping[key].push_front(hp);
     } else {
       list<HostPort>& l = s->second;
@@ -101,20 +107,26 @@ void Binder::handleRequest(int clientSocket, const string& msg) {
     }
     sendString(clientSocket, REGISTER_DONE);
   } else if (msg[0] == CLIENT_LOCATE) {
+    string key = msg.substr(msg.find('#')+1);
+    cout << "client locate " << key << endl;
 
-    map<string, list<HostPort> >::iterator s = mapping.find(msg.substr(1));
-    if (s == mapping.end()) {
+    map<string, list<HostPort> >::iterator s = mapping.find(key);
+    if (s != mapping.end()) {
+      cout << "found" << endl;
       list<HostPort>& l = s->second;
       sendString(clientSocket, l.front().toString()); // send result
       l.push_back(l.front()); // Do round robin thingy.
       l.pop_front();
     } else {
+      cout << "non locate " << endl;
       // does not have mapping yet.
       sendString(clientSocket, NONE_REGISTERED);
     }
   } else if (msg[0] == TERMINATE_ALL) {
+    cout << "terminate all" << endl;
     // Do not accept new connections
     ++terminating;
+    // Short circuit terminating.
     if (socketHostPortMap.size() == 0) ++terminate;
     // Send message to all servers to terminate.
     for (map<int, HostPort>::iterator i = socketHostPortMap.begin();
@@ -123,6 +135,7 @@ void Binder::handleRequest(int clientSocket, const string& msg) {
       sendString(i->first, msg);
     }
   } else {
+    cout << "bad request" << endl;
     sendString(clientSocket, MALFORMED_REQUEST);
   }
 }

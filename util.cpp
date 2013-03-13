@@ -132,7 +132,7 @@ int sendString(int sockfd, string buffer) {
   return 0;
 }
 
-string recvString(int sockfd) {
+int recvString(int sockfd, string& msg) {
   uint32_t size = 0;
   // Read the length of buffer so that receiving end knows when to stop.
   int num_bytes = 0;
@@ -140,10 +140,16 @@ string recvString(int sockfd) {
     char* begin = (char*)&size;
     int rc = read(sockfd, begin + num_bytes, sizeof(size) - num_bytes);
     if (rc == 0) {
-      return "";
+      cout << "client terminated?" << endl;
+      return -1;
     }
-    if (rc < 0) return "";
+    if (rc < 0) return -1;
     num_bytes += rc;
+  }
+
+  if (size == 0) {
+    msg = "";
+    return 0;
   }
 
   // Read the buffer
@@ -152,14 +158,14 @@ string recvString(int sockfd) {
   while (num_bytes < size) {
     char* begin = (char*)buffer;
     int rc = read(sockfd, begin + num_bytes, size - num_bytes);
-    if (rc < 0) return "";
+    if (rc < 0) return -1;
     num_bytes += rc;
   }
   buffer[size - 1] = NULL; // null terminate.
-  string s(buffer);
+  msg = string(buffer);
   delete [] buffer;
 
-  return s;
+  return 0;
 }
 
 int ArgType::get() const {

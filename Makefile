@@ -3,7 +3,7 @@ all: lib
 	# A Server
 	g++ -std=gnu++0x -Wno-write-strings -lrt -L. server.cpp -lrpc -o server 
 	# A client
-	g++ -std=gnu++0x -L. client.cpp -lrpc -lpthread -o client 
+	g++ -std=gnu++0x -Wno-write-strings -L. client.cpp -lrpc -lpthread -o client 
 	# Binder
 	g++ -std=gnu++0x -L. binder_main.cpp -lrpc -lrt -o binder
 

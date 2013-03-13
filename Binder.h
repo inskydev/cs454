@@ -13,7 +13,7 @@ struct BinderClient {
 
   int registerServer(const string& name, int* argTypes, const string& server);
 
-  int locateServer(const string& name, int* argType);
+  int locateServer(const string& name, int* argType, HostPort* hp);
 
   // TODO Test this (implemented)
   int terminateAll();

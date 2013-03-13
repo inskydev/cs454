@@ -15,6 +15,7 @@ struct RPCServer : public Server {
     if (msg[0] == 'T') {
       ++terminate;
     }
+    std::cout << "Got request:" << msg << endl;
     // TODO, handle client requests
   }
 
@@ -27,14 +28,21 @@ BinderClient* binderClient = NULL;
 RPCServer* rpcServer = NULL;
 // =====================================================================
 
-int rpcInit() {
-  // Set up connection to binder.
-  HostPort* hp = getHostPort(HostPort::BINDER, true, true);
-  if (!hp) return Error::NO_BINDER_ADDRESS;
-
-  try {
+int initBinderClient() {
+  if (!binderClient) {
+    // Set up connection to binder.
+    HostPort* hp = getHostPort(HostPort::BINDER, true, true);
+    if (!hp) return Error::NO_BINDER_ADDRESS;
     binderClient = new BinderClient(*hp);
     delete hp;
+  }
+  return 0;
+}
+
+int rpcInit() {
+  try {
+    int rc = initBinderClient();
+    if (rc < 0) return rc;
 
     // Set up ports to accept (but have not started accepting yet);
     rpcServer = new RPCServer();
@@ -49,6 +57,8 @@ int rpcRegister(char* name, int* argTypes, skeleton f) {
   // TODO, check arguments are not null
   if (!binderClient) return Error::UNINITIALIZED_BINDER;
   if (!rpcServer) return Error::UNINITIALIZED_SERVER;
+  if (!argTypes) return Error::INVALID_ARGTYPES;
+  //if (!f) return Error::INVALID_SKELETON;
 
   // Register at local server handler.
   string args = normalizeArgs(string(name), argTypes);
@@ -61,35 +71,39 @@ int rpcRegister(char* name, int* argTypes, skeleton f) {
 
 // =====================================================================
 int rpcCall(char* name, int* argTypes, void** args) {
-	
-  binderClient->locateServer(string(name), argTypes);
-  //get reply from binder
-  string serverMsg = recvString(binderClient->transport.m_sockfd);
-  
-  HostPort *hpServer;
-  hpServer->fromString(serverMsg);
-  
-  //marshall inputs
+  if (!name) return Error::INVALID_NAME;
+  if (!argTypes) return Error::INVALID_ARGTYPES;
+  int rc = initBinderClient();
+  if (rc < 0) return rc;
+
+  cout << "rpc call" << endl;
+
+  HostPort hpServer;
+  rc = binderClient->locateServer(string(name), argTypes, &hpServer);
+  if (rc < 0) return rc;
+  cout << "located " << hpServer.toString() << endl;
+
+  // marshall inputs
   string request = normalizeArgs(name, argTypes);
   request+="#";
-  
-  void** it=args;
+
+  void** it = args;
   int* at = argTypes;
   for (;(*at);it++,at++){
     //need to know how to increment the ptrs of different size
-    
+
     char* curr = (char*)*it;
     int type = ((*at)>>16) & 0xFF;
     int length = ((*at)) & 0xFF;
     if (!length)
       length = 1;
-    
+
     for (int i =0; i<length; i++){
       char* buffer = (char*)malloc(sizeof(double));
       memset(buffer, 0, sizeof(double));
-      
+
       switch(type){
-        
+
         case ARG_CHAR:
           memcpy(buffer, curr, sizeof(char));
           curr += sizeof(char);
@@ -117,50 +131,52 @@ int rpcCall(char* name, int* argTypes, void** args) {
         default:
           printf("error type\n");
       }
-      request+=(string)buffer;
-      
+      request += string(buffer);
+
       delete buffer;
     }
   }
-  Transporter transServer(hpServer->hostname, hpServer->port);
+  Transporter transServer(hpServer.hostname, hpServer.port);
   transServer.connect();
-  
-  //request should have everything now
+
+  // request should have everything now
   sendString(transServer.m_sockfd, request);
-  
-  
+
+
   //take the reply and shove the parameters back to the pointers
-  string processedString = recvString(transServer.m_sockfd);
-  
+  string processedString;
+  rc = recvString(transServer.m_sockfd, processedString);
+  if (rc < 0) return rc;
+
   char* cpString = new char[processedString.length()+1];
-  
+
   processedString.c_str();
-  
+
   strcpy(cpString, processedString.c_str());
-  
+
   while (*cpString != '#')
     cpString ++;
-  
+
   it=args;
   at = argTypes;
   for (;(*at);it++,at++){
-    //need to know how to increment the ptrs of different size
-    
+    // need to know how to increment the ptrs of different size
+
     char* curr = (char*)*it;
-    
+
     int type = ((*at)>>16) & 0xFF;
     int length = ((*at)) & 0xFF;
-    
+
     if (!length)
       length = 1;
-    
+
     for (int i =0; i<length; i++){
-      
+
       if (!((*at) && 0x80000000)) //check if this is output
-        break; 
-        
+        break;
+
       switch(((*at)>>16) & 0xFF ){
-        
+
         case ARG_CHAR:
           memcpy(curr, cpString, sizeof(char));
           cpString += sizeof(char);
@@ -188,7 +204,7 @@ int rpcCall(char* name, int* argTypes, void** args) {
       }
     }
   }
-  
+
   return 0;
 
 }

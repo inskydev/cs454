@@ -30,6 +30,10 @@ struct Error {
     BINDER_UNREACHEABLE = -3,
     UNINITIALIZED_SERVER = -4,
     NO_BINDER_ADDRESS  = -5,
+    INVALID_NAME = -6,
+    INVALID_ARGTYPES = -7,
+    INVALID_ARGS = -8,
+    NO_SERVER_WITH_ARGTYPE = -9
   };
 };
 
@@ -181,7 +185,7 @@ HostPort* getHostPort(HostPort::Type type, bool debug = false, bool use_file = f
 
 int sendString(int sockfd, string buffer);
 
-string recvString(int sockfd);
+int recvString(int sockfd, string& msg);
 
 int* formatArgTypes(const vector<ArgType>& args);
 
