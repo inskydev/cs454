@@ -5,9 +5,12 @@ void* Server::thread_run(void* s) {
   while (server->terminate.get() == 0) {
     cout << "Thread running" << endl;
     pair<int, string> work = server->workItems.get();
-    cout << "Got work" << endl;
     server->handleRequest(work.first, work.second);
   }
+
+  // Tell other threads to stop working as well.
+
+  return NULL;
 }
 
 int Server::execute() {

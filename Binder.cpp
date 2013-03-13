@@ -23,6 +23,7 @@ int BinderClient::registerServer(const string& name,
 }
 
 int BinderClient::terminateAll() {
+  cout << "Terminate" << endl;
   if (transport.sendString(string(1, TERMINATE_ALL)) < 0) {
     return Error::BINDER_UNREACHEABLE;
   } else {

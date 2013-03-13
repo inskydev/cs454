@@ -4,7 +4,8 @@
 #include "Server.h"
 
 struct RPCServer : public Server {
-  RPCServer() : Server(HostPort::SERVER) {
+  // RPC server handles 10 concurrent requests.
+  RPCServer() : Server(HostPort::SERVER, 10) {
   }
 
   virtual ~RPCServer() {}
@@ -13,10 +14,14 @@ struct RPCServer : public Server {
   virtual void disconnected(int socketid) {}
   virtual void handleRequest(int socketid, const string& msg) {
     if (msg[0] == 'T') {
-      ++terminate;
+      ++terminating; // stop accept new clients.
+      std::cout << "Server terminating" << endl;
+    } else {
+      std::cout << "Got request:" << msg << endl;
+      // deserialize ..
+      // check with rpcHandlerMapping again
+      // call skeleton with values.
     }
-    std::cout << "Got request:" << msg << endl;
-    // TODO, handle client requests
   }
 
   map<string, skeleton> rpcHandlerMapping;
@@ -222,6 +227,12 @@ int rpcExecute() {
 
 // =====================================================================
 int rpcTerminate() {
-  if (!binderClient) return Error::UNINITIALIZED_BINDER;
-  return binderClient->terminateAll();
+  int rc = initBinderClient();
+  if (rc < 0) return rc;
+
+  rc = binderClient->terminateAll();
+  delete binderClient;
+  binderClient = NULL;
+
+  return rc;
 }

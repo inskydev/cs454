@@ -13,7 +13,7 @@
 struct Server {
   static void* thread_run(void* server);
 
-  Server(HostPort::Type type) {
+  Server(HostPort::Type type, int numThread = 1) {
     int rc;
     listenSocket = socket(AF_INET, SOCK_STREAM, 0);
     ASSERT(listenSocket >= 0, "ERROR opening socket");
@@ -37,7 +37,7 @@ struct Server {
     hostport.hostname = hostname;
     hostport.port = int(ntohs(serv_addr.sin_port));
 
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < numThread; i++) {
       workers.push_back(pthread_t());
       pthread_t* worker = &workers.back();
       pthread_create(worker, NULL, thread_run, this);

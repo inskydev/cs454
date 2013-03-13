@@ -12,4 +12,5 @@ int main(int argc, char *argv[]) {
   void** args0 = NULL; //(void **)malloc(0 * sizeof(void *));
   int s4 = rpcCall("f0", &argTypes, NULL);
 
+  //rpcTerminate();
 }
