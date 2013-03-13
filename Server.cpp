@@ -53,7 +53,6 @@ int Server::execute() {
           close(*client);
           clientSockets.erase(client); // Client closed socket.
         } else {
-          cout << "put in work items" << endl;
           workItems.put(make_pair(*client, msg));
         }
         break;

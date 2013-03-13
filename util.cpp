@@ -200,10 +200,11 @@ string normalizeArgs(const string& name, int* argTypes) {
   for (int* c = argTypes; *c != 0; c++) {
     numArgType++;
   }
-  char* buffer = new char[name.size() + numArgType*4 + 1];
+  char* buffer = new char[name.size() + numArgType*4 + 2];
   char* start = buffer;
   memcpy(start, name.c_str(), name.size());
   start += name.size();
+
   for (int* arg = argTypes; *arg != 0; arg++) {
     int a = *arg;
     if (a & (1 << ARG_INPUT)) {

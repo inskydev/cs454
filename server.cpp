@@ -9,6 +9,10 @@
 
 using namespace std;
 
+int f0(int *argTypes, void **args) {
+  return 3;
+}
+
 int main(int argc, char* argv[]) {
 
   /* create sockets and connect to the binder */
@@ -28,7 +32,7 @@ int main(int argc, char* argv[]) {
 
   // (Takes nothing, return nothing), no funciton implemented
   int a = 0;
-  rpcRegister("f0", &a, NULL);
+  rpcRegister("f0", &a, f0);
 
   rpcExecute();
 

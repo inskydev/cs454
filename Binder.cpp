@@ -54,14 +54,20 @@ int BinderClient::locateServer(const string& name, int* argType, HostPort* hp) {
 
 void Binder::disconnected(int clientSocket) {
   // Handle client termination by removing hostport in all mapping.
+  // TODO, this does not work.
+  if (socketHostPortMap.find(clientSocket) == socketHostPortMap.end()) {
+    return;
+  }
+
   HostPort hp = socketHostPortMap[clientSocket];
   socketHostPortMap.erase(clientSocket);
 
   for (map<string, list<HostPort> >::iterator m = mapping.begin();
       m != mapping.end();
       m++) {
-    for (list<HostPort>::iterator l = m->second.begin(); l == m->second.end(); l++)
+    for (list<HostPort>::iterator l = m->second.begin(); l != m->second.end(); l++)
     {
+      cout << l->toString() << endl;
       if (hp == *l) {
         m->second.erase(l);
         break;
@@ -89,12 +95,12 @@ void Binder::handleRequest(int clientSocket, const string& msg) {
 
     map<string, list<HostPort> >::iterator s = mapping.find(key);
     if (s == mapping.end()) {
-      cout << "registered key" << key << endl;
+      cout << "registered key" << key << " " << hp.toString() << endl;
       mapping[key].push_front(hp);
     } else {
       list<HostPort>& l = s->second;
       bool duplicate = false;
-      for (list<HostPort>::iterator l = s->second.begin(); l == s->second.end(); l++)
+      for (list<HostPort>::iterator l = s->second.begin(); l != s->second.end(); l++)
       {
         if (hp == *l) {
           duplicate = true;
@@ -104,6 +110,8 @@ void Binder::handleRequest(int clientSocket, const string& msg) {
       if (duplicate) {
         sendString(clientSocket, REREGISTER);
         return;
+      } else {
+        l.push_front(hp);
       }
     }
     sendString(clientSocket, REGISTER_DONE);
@@ -112,14 +120,14 @@ void Binder::handleRequest(int clientSocket, const string& msg) {
     cout << "client locate " << key << endl;
 
     map<string, list<HostPort> >::iterator s = mapping.find(key);
-    if (s != mapping.end()) {
-      cout << "found" << endl;
+    if (s != mapping.end() && s->second.size()) {
+      cout << "found a server" << endl;
       list<HostPort>& l = s->second;
       sendString(clientSocket, l.front().toString()); // send result
       l.push_back(l.front()); // Do round robin thingy.
       l.pop_front();
     } else {
-      cout << "non locate " << endl;
+      cout << "no server located" << endl;
       // does not have mapping yet.
       sendString(clientSocket, NONE_REGISTERED);
     }

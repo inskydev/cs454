@@ -3,6 +3,9 @@
 #include "Binder.h"
 #include "Server.h"
 
+#define UNSUPPORTED_CALL "UNSUPPORTED_CALL"
+#define EXCEED_ARRAY_LEN "EXCEED_ARRAY_LEN"
+
 struct RPCServer : public Server {
   // RPC server handles 10 concurrent requests.
   RPCServer() : Server(HostPort::SERVER, 10) {
@@ -16,15 +19,45 @@ struct RPCServer : public Server {
     if (msg[0] == 'T') {
       ++terminating; // stop accept new clients.
       std::cout << "Server terminating" << endl;
-    } else {
+    } else if (msg[0] == 'C') {
       std::cout << "Got request:" << msg << endl;
+      // TODO, array length too long.
       // deserialize ..
+      string normalized = msg.substr(1, msg.find('#') - 1);
+      cout << normalized << endl;
+      map<string, skeleton>::iterator it =
+        rpcHandlerMapping.find(normalized);
+      if (it == rpcHandlerMapping.end()) {
+        cout << "No API supported here" << endl;
+        sendString(socketid, UNSUPPORTED_CALL);
+      } else {
+        cout << "Supported" << endl;
+        // Iterate through each argument check array length.
+        const list<int>& args = rpcArgsMapping[normalized];
+        string argsStr = msg.substr(msg.find('#') + 1);
+        int aa;
+        void** param = NULL;
+        if (!argsStr.empty()) {
+          cout << "not empty" << endl;
+          it->second(&aa, param);
+          cout << argsStr << endl;
+          // Read the first args.
+          string num = argsStr.substr(0, argsStr.find(':'));
+          cout << num << endl;
+        }
+        cout << "calling" << endl;
+        int rc = it->second(&aa, param);
+        cout << "ret:" << rc << endl;
+        // TODO, loop through output params and send them back.
+      }
       // check with rpcHandlerMapping again
       // call skeleton with values.
+      sendString(socketid, ""); // reply to client
     }
   }
 
   map<string, skeleton> rpcHandlerMapping;
+  map<string, list<int>> rpcArgsMapping;
 };
 
 // =====================================================================
@@ -68,6 +101,12 @@ int rpcRegister(char* name, int* argTypes, skeleton f) {
   // Register at local server handler.
   string args = normalizeArgs(string(name), argTypes);
   rpcServer->rpcHandlerMapping[args] = f;
+  list<int> argsList;
+  while (*argTypes != 0) {
+    argsList.push_back(*argTypes);
+    argTypes++;
+  }
+  rpcServer->rpcArgsMapping[args] = argsList;
 
   // Notify binder that the server is ready.
   return binderClient->registerServer(
@@ -89,26 +128,28 @@ int rpcCall(char* name, int* argTypes, void** args) {
   cout << "located " << hpServer.toString() << endl;
 
   // marshall inputs
-  string request = normalizeArgs(name, argTypes);
-  request+="#";
+  string request = "C" + normalizeArgs(name, argTypes);
+  request += "#";
 
   void** it = args;
   int* at = argTypes;
-  for (;(*at);it++,at++){
-    //need to know how to increment the ptrs of different size
+  for (;(*at);it++,at++) {
+    // need to know how to increment the ptrs of different size
 
     char* curr = (char*)*it;
     int type = ((*at)>>16) & 0xFF;
     int length = ((*at)) & 0xFF;
-    if (!length)
+    if (!length) {
       length = 1;
+    }
+    request += to_string((long long int)length);
+    request += ":";
 
     for (int i =0; i<length; i++){
-      char* buffer = (char*)malloc(sizeof(double));
-      memset(buffer, 0, sizeof(double));
+      char buffer[16];
+      memset(buffer, 0, 16);
 
-      switch(type){
-
+      switch (type) {
         case ARG_CHAR:
           memcpy(buffer, curr, sizeof(char));
           curr += sizeof(char);
@@ -137,8 +178,6 @@ int rpcCall(char* name, int* argTypes, void** args) {
           printf("error type\n");
       }
       request += string(buffer);
-
-      delete buffer;
     }
   }
   Transporter transServer(hpServer.hostname, hpServer.port);
