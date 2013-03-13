@@ -227,3 +227,52 @@ string normalizeArgs(const string& name, int* argTypes) {
   *start = NULL;
   return string(buffer);
 }
+
+string serializeCall(const string& name, int* argTypes, void** args, bool outputOnly) {
+  string request = "C" + normalizeArgs(name, argTypes) + "#";
+
+  void** it = args;
+  int* at = argTypes;
+  for (;(*at); it++, at++) {
+    // need to know how to increment the ptrs of different size
+
+    char* curr = (char*)*it;
+    int type = ((*at)>>16) & 0xFF;
+    int length = ((*at)) & 0xFF;
+    if (!length) {
+      length = 1;
+    }
+    request += to_string((long long int)length);
+    request += ":";
+
+    for (int i = 0; i < length; i++) {
+      if (type == ARG_CHAR) {
+        request += string(1, *curr) + ";";
+        curr += sizeof(char);
+      } else if (type == ARG_SHORT) {
+        long long int value = *(short*)curr;
+        request += to_string(value) + ";";
+        curr += sizeof(short);
+      } else if (type == ARG_INT) {
+        long long int value = *(int*)curr;
+        request += to_string(value) + ";";
+        curr += sizeof(int);
+      } else if (type == ARG_LONG) {
+        long long int value = *(long*)curr;
+        request += to_string(value) + ";";
+        curr += sizeof(long);
+      } else if (type == ARG_DOUBLE) {
+        long double value = *(double*)curr;
+        request += to_string(value) + ";";
+        curr += sizeof(double);
+      } else if (type == ARG_FLOAT) {
+        long double value = *(float*)curr;
+        request += to_string(value) + ";";
+        curr += sizeof(float);
+      } else {
+        printf("error type\n");
+      }
+    }
+  }
+
+}

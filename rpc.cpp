@@ -52,15 +52,15 @@ struct RPCServer : public Server {
           ASSERT(not argStr.empty(), "need more stirng to process");
           int type = (args[l] >> 16) & 0xFF;
           int length = (args[l]) & 0xFF;
+          bool isOutput = (args[l] & (1 << ARG_OUTPUT));
 
           size_t delim_position = argStr.find(':');
           int actualLength = atoi(argStr.substr(0, delim_position).c_str());
-          cout << argStr.substr(0, delim_position) << endl;
-          cout << actualLength << endl;
           if (actualLength > length) arrayLenWarning = true;
 
           void* argument = NULL;
           if (type == ARG_CHAR) {
+            cout << "Char array:" << endl;
             char* v = new char[actualLength];
             argument = v;
           } else if (type == ARG_SHORT) {
@@ -82,14 +82,16 @@ struct RPCServer : public Server {
             ASSERT(false, "Invalid type");
           }
 
-          argStr = argStr.substr(delim_position);
-          cout << argStr << endl;
+          argStr = argStr.substr(delim_position + 1);
+          cout << "args nows=\"" << argStr << "\"" << endl;
           for (int a = 0; a < actualLength; a++) {
+            cout << a << endl;
             if (type == ARG_CHAR) {
               char* v = (char*) argument;
               v[a] = argStr.at(a);
               argStr = argStr.substr(sizeof(char));
             } else if (type == ARG_SHORT) {
+              // TODO
             } else if (type == ARG_INT) {
             } else if (type == ARG_LONG) {
             } else if (type == ARG_DOUBLE) {
@@ -100,8 +102,8 @@ struct RPCServer : public Server {
           }
         }
         //cout << "calling" << endl;
-        //int rc = it->second(&aa, param);
-        //cout << "ret:" << rc << endl;
+        int rc = it->second(&aa, param);
+        cout << "ret:" << rc << endl;
         //free(param);
         // TODO deletes,
         // TODO, loop through output params and send them back.
@@ -184,55 +186,11 @@ int rpcCall(char* name, int* argTypes, void** args) {
   if (rc < 0) return rc;
   cout << "located " << hpServer.toString() << endl;
 
-  // marshall inputs
-  string request = "C" + normalizeArgs(name, argTypes);
-  request += "#";
-
-  void** it = args;
-  int* at = argTypes;
-  for (;(*at);it++,at++) {
-    // need to know how to increment the ptrs of different size
-
-    char* curr = (char*)*it;
-    int type = ((*at)>>16) & 0xFF;
-    int length = ((*at)) & 0xFF;
-    if (!length) {
-      length = 1;
-    }
-    request += to_string((long long int)length);
-    request += ":";
-
-    for (int i =0; i<length; i++) {
-      if (type == ARG_CHAR) {
-        request += string(*curr, 1) + ";";
-        curr += sizeof(char);
-      } else if (type == ARG_SHORT) {
-        long long int value = *(short*)curr;
-        request += to_string(value) + ";";
-        curr += sizeof(short);
-      } else if (type == ARG_INT) {
-        long long int value = *(int*)curr;
-        request += to_string(value) + ";";
-        curr += sizeof(int);
-      } else if (type == ARG_LONG) {
-        long long int value = *(long*)curr;
-        request += to_string(value) + ";";
-        curr += sizeof(long);
-      } else if (type == ARG_DOUBLE) {
-        long double value = *(double*)curr;
-        request += to_string(value) + ";";
-        curr += sizeof(double);
-      } else if (type == ARG_FLOAT) {
-        long double value = *(float*)curr;
-        request += to_string(value) + ";";
-        curr += sizeof(float);
-      } else {
-        printf("error type\n");
-      }
-    }
-  }
   Transporter transServer(hpServer.hostname, hpServer.port);
   transServer.connect();
+
+  string request = serializeCall(string(name), argTypes, args);
+  cout << "Sending " << request << endl;
 
   // request should have everything now
   sendString(transServer.m_sockfd, request);
@@ -243,6 +201,8 @@ int rpcCall(char* name, int* argTypes, void** args) {
   rc = recvString(transServer.m_sockfd, processedString);
   if (rc < 0) return rc;
 
+  // I haven't read this very carefully,
+  // but we should retrieve output results only.
   char* cpString = new char[processedString.length()+1];
 
   processedString.c_str();
@@ -270,8 +230,7 @@ int rpcCall(char* name, int* argTypes, void** args) {
       if (!((*at) && 0x80000000)) //check if this is output
         break;
 
-      switch(((*at)>>16) & 0xFF ){
-
+      switch (((*at)>>16) & 0xFF ){
         case ARG_CHAR:
           memcpy(curr, cpString, sizeof(char));
           cpString += sizeof(char);

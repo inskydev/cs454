@@ -191,4 +191,6 @@ int* formatArgTypes(const vector<ArgType>& args);
 
 string normalizeArgs(const string& name, int* argTypes);
 
+string serializeCall(const string& name, int* argTypes, void** args);
+
 #endif // UTIL_H_
