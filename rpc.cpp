@@ -204,19 +204,20 @@ int rpcCall(char* name, int* argTypes, void** args) {
   // I haven't read this very carefully,
   // but we should retrieve output results only.
   char* cpString = new char[processedString.length()+1];
-
-  processedString.c_str();
-
   strcpy(cpString, processedString.c_str());
 
+  //Ignore argTypes in the reply
   while (*cpString != '#')
     cpString ++;
 
   void** it = args;
   int* at = argTypes;
   for (;(*at);it++,at++){
+    
+    if (!((*at) && 0x80000000)) //check if this is output
+        continue;
+        
     // need to know how to increment the ptrs of different size
-
     char* curr = (char*)*it;
 
     int type = ((*at)>>16) & 0xFF;
@@ -226,37 +227,39 @@ int rpcCall(char* name, int* argTypes, void** args) {
       length = 1;
 
     for (int i =0; i<length; i++){
-
-      if (!((*at) && 0x80000000)) //check if this is output
-        break;
-
       switch (((*at)>>16) & 0xFF ){
         case ARG_CHAR:
           memcpy(curr, cpString, sizeof(char));
-          cpString += sizeof(char);
           break;
         case ARG_SHORT:
           memcpy(curr, cpString, sizeof(short));
-          cpString += sizeof(short);
           break;
         case ARG_INT:
           memcpy(curr, cpString, sizeof(int));
-          cpString += sizeof(int);
           break;
         case ARG_LONG:
           memcpy(curr, cpString, sizeof(long));
-          cpString += sizeof(long);
           break;
         case ARG_DOUBLE:
           memcpy(curr, cpString, sizeof(double));
-          cpString += sizeof(double);
           break;
         case ARG_FLOAT:
           memcpy(curr, cpString, sizeof(float));
-          cpString += sizeof(float);
           break;
       }
+      //use delimiter
+      while (*cpString != ';')
+        cpString++;
+      cpString++;
     }
+    
+    if (!(*cpString))
+      break;
+    
+    while (*cpString != ':')
+      cpString++;
+    cpString++;
+    
   }
 
   return 0;
