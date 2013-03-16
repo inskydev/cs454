@@ -18,7 +18,12 @@ int BinderClient::registerServer(const string& name,
   if (transport.sendString(msg) < 0) {
     return Error::BINDER_UNREACHEABLE;
   } else {
-    return 0;
+    string serverMsg;
+    int rc = recvString(transport.m_sockfd, serverMsg);
+    if (rc < 0) return Error::BINDER_UNREACHEABLE;
+
+    // TODO, server may reply with warning.
+    return serverMsg == REGISTER_DONE ? 0 : -1;
   }
 }
 
@@ -26,9 +31,12 @@ int BinderClient::terminateAll() {
   cout << "Terminate" << endl;
   if (transport.sendString(string(1, TERMINATE_ALL)) < 0) {
     return Error::BINDER_UNREACHEABLE;
-  } else {
-    return 0;
   }
+
+  string serverMsg;
+  int rc = recvString(transport.m_sockfd, serverMsg);
+
+  return rc;
 }
 
 
@@ -136,14 +144,15 @@ void Binder::handleRequest(int clientSocket, const string& msg) {
     cout << "terminate all" << endl;
     // Do not accept new connections
     ++terminating;
-    // Short circuit terminating.
-    if (socketHostPortMap.size() == 0) ++terminate;
+
     // Send message to all servers to terminate.
     for (map<int, HostPort>::iterator i = socketHostPortMap.begin();
         i != socketHostPortMap.end();
         i++) {
+      cout << "Sending to: " << i->second.toString() << endl;
       sendString(i->first, msg);
     }
+    // Asyncrhonously wait for each server to ack
   } else {
     cout << "bad request" << endl;
     sendString(clientSocket, MALFORMED_REQUEST);

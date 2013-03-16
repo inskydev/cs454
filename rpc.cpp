@@ -8,7 +8,7 @@
 
 struct RPCServer : public Server {
   // RPC server handles 10 concurrent requests.
-  RPCServer() : Server(HostPort::SERVER, 10) {
+  RPCServer(int binderSock) : Server(HostPort::SERVER, binderSock, 10) {
   }
 
   virtual ~RPCServer() {
@@ -141,7 +141,7 @@ int rpcInit() {
     if (rc < 0) return rc;
 
     // Set up ports to accept (but have not started accepting yet);
-    rpcServer = new RPCServer();
+    rpcServer = new RPCServer(binderClient->transport.m_sockfd);
     return 0;
   } catch (int i) {
     return i;
@@ -212,8 +212,8 @@ int rpcCall(char* name, int* argTypes, void** args) {
   while (*cpString != '#')
     cpString ++;
 
-  it=args;
-  at = argTypes;
+  void** it = args;
+  int* at = argTypes;
   for (;(*at);it++,at++){
     // need to know how to increment the ptrs of different size
 

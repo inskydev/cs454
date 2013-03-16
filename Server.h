@@ -13,7 +13,9 @@
 struct Server {
   static void* thread_run(void* server);
 
-  Server(HostPort::Type type, int numThread = 1) {
+  Server(HostPort::Type type, int binderSock, int numThread = 1) {
+    binderSocket = binderSock;
+    binderTerminatingClient = -1;
     int rc;
     listenSocket = socket(AF_INET, SOCK_STREAM, 0);
     ASSERT(listenSocket >= 0, "ERROR opening socket");
@@ -54,9 +56,14 @@ struct Server {
   virtual void connected(int socketid) = 0;
   virtual void disconnected(int socketid) = 0;
   virtual void handleRequest(int socketid, const string& msg) = 0;
+  virtual bool canTerminateNow() {
+    return false;
+  }
 
   // Members
   int listenSocket;
+  int binderSocket;
+  int binderTerminatingClient;
   list<int> clientSockets;
   struct sockaddr_in serv_addr, cli_addr;
   HostPort hostport;

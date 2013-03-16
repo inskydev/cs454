@@ -15,7 +15,6 @@ struct BinderClient {
 
   int locateServer(const string& name, int* argType, HostPort* hp);
 
-  // TODO Test this (implemented)
   int terminateAll();
 
   HostPort hostport; // Binder hostport
@@ -24,7 +23,7 @@ struct BinderClient {
 
 struct Binder : public Server {
 
-  Binder() : Server(HostPort::BINDER) {
+  Binder() : Server(HostPort::BINDER, -1) {
   }
 
   virtual ~Binder() {}
@@ -36,6 +35,10 @@ struct Binder : public Server {
 
   // Server register or client locate requests.
   virtual void handleRequest(int socketid, const string& msg);
+
+  virtual bool canTerminateNow() {
+    return socketHostPortMap.empty();
+  }
 
   // member vars for mapping
   map<string, list<HostPort> > mapping;

@@ -228,7 +228,7 @@ string normalizeArgs(const string& name, int* argTypes) {
   return string(buffer);
 }
 
-string serializeCall(const string& name, int* argTypes, void** args, bool outputOnly) {
+string serializeCall(const string& name, int* argTypes, void** args) {
   string request = "C" + normalizeArgs(name, argTypes) + "#";
 
   void** it = args;
