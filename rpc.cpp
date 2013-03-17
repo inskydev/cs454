@@ -26,8 +26,6 @@ struct RPCServer : public Server {
       ++terminating; // stop accept new clients.
       //std::cout << "Server terminating" << endl;
     } else if (msg[0] == 'C') {
-      std::cout << "Got request:" << msg << endl;
-      // TODO, array length too long.
       // deserialize ..
       string normalized = msg.substr(1, msg.find('#') - 1);
       map<string, pair<string, skeleton> >::iterator it =
@@ -39,7 +37,7 @@ struct RPCServer : public Server {
         int* args = rpcArgsMapping[normalized];
         int len = 0; while (args[len] != 0) len++;
         string argStr = msg.substr(msg.find('#') + 1);
-        cout << "Arg str:" << argStr <<  " " << argStr.size() << endl;
+        //cout << "Arg str " << argStr <<  " " << argStr.size() << endl;
         bool arrayLenWarning = false;
 
         void** param = (void**) malloc(sizeof(void*) * len);
@@ -51,7 +49,10 @@ struct RPCServer : public Server {
 
           size_t delim_position = argStr.find(':');
           int actualLength = atoi(argStr.substr(0, delim_position).c_str());
-          if (actualLength > length) arrayLenWarning = true;
+          if (actualLength > length && length != 0) {
+            // note: ignore scalar oversize here.
+            arrayLenWarning = true;
+          }
 
           void* argument = NULL;
           if (type == ARG_CHAR) {
@@ -78,14 +79,20 @@ struct RPCServer : public Server {
 
           param[l] = argument;
           argStr = argStr.substr(delim_position + 1);
-          cout << "args nows=\"" << argStr << "\"" << endl;
+          //cout << "args nows=\"" << argStr << "\"" << endl;
+          //cout << actualLength << endl;
           for (int a = 0; a < actualLength; a++) {
             string tmpStr = argStr.substr(0, argStr.find(';'));
             argStr = argStr.substr(tmpStr.size() + 1);
 
             if (type == ARG_CHAR) {
               char* v = (char*) argument;
-              v[a] = tmpStr.at(0);
+              if (tmpStr.empty()) {
+                v[a] = ';';
+                argStr = argStr.substr(1);
+              } else {
+                v[a] = tmpStr.at(0);
+              }
             } else if (type == ARG_SHORT) {
               short* v = (short*)argument;
               v[a] = (short)atoi(tmpStr.c_str());
@@ -109,7 +116,10 @@ struct RPCServer : public Server {
 
         int rc = it->second.second(args, param);
         string ret = serializeCall(it->second.first, rpcArgsMapping[normalized], param);
-        cout << "returing" << ret << endl;
+        //cout << "returing" << ret << endl;
+        sendString(socketid, ret); // reply to client
+        if (arrayLenWarning) sendString(socketid, "W"); // reply to client
+        else sendString(socketid, ""); // reply to client
         sendString(socketid, ret); // reply to client
         for (int l = 0; l < len; l++) {
           int type = (args[l] >> 16) & 0xFF;
@@ -152,7 +162,7 @@ int initBinderClient() {
   if (!binderClient) {
     // Set up connection to binder.
     HostPort* hp = getHostPort(HostPort::BINDER, true, true);
-    if (!hp) return Error::NO_BINDER_ADDRESS;
+    if (!hp) return Error::MISSING_ENV_VAR;
     binderClient = new BinderClient(*hp);
     delete hp;
   }
@@ -174,7 +184,7 @@ int rpcInit() {
 
 // =====================================================================
 int rpcRegister(char* name, int* argTypes, skeleton f) {
-  if (!binderClient) return Error::UNINITIALIZED_BINDER;
+  if (!binderClient) return Error::UNINITIALIZED_BINDER_CLIENT;
   if (!rpcServer) return Error::UNINITIALIZED_SERVER;
   if (!argTypes) return Error::INVALID_ARGTYPES;
   if (!f) return Error::INVALID_SKELETON;
@@ -210,7 +220,6 @@ int rpcCallHelper(char* name, int* argTypes, void** args, HostPort* hp) {
   int rc = initBinderClient();
   if (rc < 0) return rc;
 
-  cout << "rpc call" << endl;
   string hostname;
   int port;
 
@@ -218,11 +227,10 @@ int rpcCallHelper(char* name, int* argTypes, void** args, HostPort* hp) {
     HostPort hpServer;
     rc = binderClient->locateServer(string(name), argTypes, &hpServer);
     if (rc < 0) return rc;
-    cout << "located " << hpServer.toString() << endl;
+    //cout << "located " << hpServer.toString() << endl;
     hostname = hpServer.hostname;
     port = hpServer.port;
   } else {
-    cout  << hp->hostname << endl;
     hostname = hp->hostname;
     port = hp->port;
   }
@@ -231,7 +239,7 @@ int rpcCallHelper(char* name, int* argTypes, void** args, HostPort* hp) {
   transServer.connect();
 
   string request = serializeCall(string(name), argTypes, args);
-  cout << "Send: " << request << " " << request.size() << endl;
+  //cout << "Send: " << request << " " << request.size() << endl;
 
   // request should have everything now
   sendString(transServer.m_sockfd, request);
@@ -241,7 +249,7 @@ int rpcCallHelper(char* name, int* argTypes, void** args, HostPort* hp) {
   rc = recvString(transServer.m_sockfd, reply);
   if (rc < 0) return Error::SERVER_UNREACHEABLE;
   if (reply == UNSUPPORTED_CALL) return Error::SERVER_DOES_NOT_SUPPORT_CALL;
-  cout << "Recv: " << reply << endl;
+  //cout << "Recv: " << reply << endl;
 
   int len = 0; while (argTypes[len] != 0) len++;
   string argStr = reply.substr(reply.find('#') + 1);
@@ -257,14 +265,22 @@ int rpcCallHelper(char* name, int* argTypes, void** args, HostPort* hp) {
     argStr = argStr.substr(delim_position + 1);
 
     for (int a = 0; a < actualLength; a++) {
-      cout << "args nows=\"" << argStr << "\"" << endl;
+      //cout << "args nows=\"" << argStr << "\"" << endl;
       string tmpStr = argStr.substr(0, argStr.find(';'));
       argStr = argStr.substr(tmpStr.size() + 1);
-      if (!isOutput) continue;
+      // If not output skip,
+      // If serverside length is longer than user provided, skip extra
+      if (!isOutput || a >= length) continue;
 
       if (type == ARG_CHAR) {
         char* v = (char*) args[l];
-        v[a] = tmpStr.at(0);
+        if (tmpStr.empty()) {
+          v[a] = ';';
+          argStr = argStr.substr(1);
+        } else {
+          v[a] = tmpStr.at(0);
+        }
+
       } else if (type == ARG_SHORT) {
         short* v = (short*) args[l];
         v[a] = (short)atoi(tmpStr.c_str());
@@ -286,6 +302,11 @@ int rpcCallHelper(char* name, int* argTypes, void** args, HostPort* hp) {
     }
   }
 
+  rc = recvString(transServer.m_sockfd, reply);
+  if (rc < 0) return Error::SERVER_UNREACHEABLE;
+
+  if (reply.size()) return Warn::EXCEED_MAX_ARRAY_LEN;
+
   return 0;
 
 }
@@ -297,13 +318,18 @@ int rpcCall(char* name, int* argTypes, void** args) {
 map<string, list<HostPort> > cache;
 int rpcCacheCall(char* name, int* argTypes, void** args) {
   int rc = initBinderClient();
-  if (rc < 0) return rc;
+  if (rc < 0) {
+    return Error::BINDER_UNREACHEABLE;
+  }
   string norm = normalizeArgs(name, argTypes);
   map<string, list<HostPort> >::iterator api = cache.find(norm);
 
   if (api == cache.end()) {
     rc = binderClient->cacheLocation(cache);
-    if (rc < 0) return rc;
+    if (rc < 0){
+      cache.clear();
+      return Error::BINDER_UNREACHEABLE;
+    }
     api = cache.find(norm);
   }
 
@@ -328,7 +354,10 @@ int rpcCacheCall(char* name, int* argTypes, void** args) {
   } else {
     // Update current location and try again.
     rc = binderClient->cacheLocation(cache);
-    if (rc < 0) return rc;
+    if (rc < 0){
+      cache.clear();
+      return Error::BINDER_UNREACHEABLE;
+    }
     api = cache.find(norm);
   }
 
@@ -349,11 +378,9 @@ int rpcCacheCall(char* name, int* argTypes, void** args) {
   return rc;
 }
 
-
-
 // =====================================================================
 int rpcExecute() {
-  if (!binderClient) return Error::UNINITIALIZED_BINDER;
+  if (!binderClient) return Error::UNINITIALIZED_BINDER_CLIENT;
   if (!rpcServer) return Error::UNINITIALIZED_SERVER;
   if (rpcServer->rpcArgsMapping.size() == 0) return Error::NO_FUNCTION_TO_SERVE;
   return rpcServer->execute();

@@ -44,8 +44,8 @@ int f4(int *argTypes, void **args) {
 }
 
 int f5(int *argTypes, void **args) {
-  int* arg1 = (int*) args[0];
-  *arg1 = *arg1 + 42;
+  char* arg1 = (char*) args[0];
+  cout << string(arg1) << endl;
   double* arg2 = (double*) args[1];
   *arg2 += 6.66;
   short* arg3 = (short*) args[2];
@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
 
   int* a5 = formatArgTypes(
       {
-        ArgType(INPUT, OUTPUT, ARG_INT, 0),
+        ArgType(INPUT, OUTPUT, ARG_CHAR, 10),
         ArgType(INPUT, OUTPUT, ARG_DOUBLE, 0),
         ArgType(INPUT, NOT_OUTPUT, ARG_SHORT, 7),
         ArgType(NOT_INPUT, OUTPUT, ARG_SHORT, 7),

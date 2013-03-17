@@ -251,8 +251,6 @@ string serializeCall(const string& name, int* argTypes, void** args) {
     }
     request += to_string((long long int)length);
     request += ":";
-    cout << "len" << length << endl;
-    cout << request << endl;
 
     for (int i = 0; i < length; i++) {
       if (type == ARG_CHAR) {

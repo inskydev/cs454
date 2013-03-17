@@ -12,7 +12,6 @@ int main(int argc, char *argv[]) {
   rpcCacheCall("f0", &argTypes, NULL);
   rpcCacheCall("f0", &argTypes, NULL);
 
-#if 0
   void** args0 = NULL; //(void **)malloc(0 * sizeof(void *));
   int s4 = rpcCall("f0", &argTypes, NULL);
   cout << "f0:" << s4 << endl;
@@ -87,13 +86,13 @@ int main(int argc, char *argv[]) {
   {
       int* a5 = formatArgTypes(
       {
-        ArgType(INPUT, OUTPUT, ARG_INT, 0),
+        ArgType(INPUT, OUTPUT, ARG_CHAR, 12),
         ArgType(INPUT, OUTPUT, ARG_DOUBLE, 0),
         ArgType(INPUT, NOT_OUTPUT, ARG_SHORT, 3),
         ArgType(NOT_INPUT, OUTPUT, ARG_SHORT, 3),
       });
 
-    int v1 = 4;
+    char v1[] = "#1;2#;@;aaaa";
     double v2 = 4.0;
     short v3[]  = {1, 2, 3};
     short v4[]  = {0, 0, 0};
@@ -104,13 +103,13 @@ int main(int argc, char *argv[]) {
     args[3] = &v4;
     int s = rpcCall("f5", a5, args);
     cout << "c5: " << s << endl;
-    cout << v1 << endl;
+    cout << string(v1) << endl;
     cout << v2 << endl;
     cout << v3[0] << v3[1] << v3[2] << endl;
     cout << v4[0] << v4[1] << v4[2] << endl;
   }
-  int rc = rpcTerminate();
-  cout << rc << endl;
-#endif
+
+  //int rc = rpcTerminate();
+  //cout << rc << endl;
 
 }

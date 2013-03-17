@@ -7,5 +7,7 @@ int main(int argc, char* argv[]) {
   // listen for connections
   binder->execute();
 
+  delete binder;
+
   return 0;
 }

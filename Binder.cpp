@@ -29,15 +29,14 @@ int BinderClient::registerServer(const string& name,
 }
 
 int BinderClient::terminateAll() {
-  cout << "Terminate" << endl;
   if (transport.sendString(string(1, TERMINATE_ALL)) < 0) {
     return Error::BINDER_UNREACHEABLE;
   }
 
   string serverMsg;
   int rc = recvString(transport.m_sockfd, serverMsg);
-
-  return rc;
+  if (rc < 0) return Error::BINDER_UNREACHEABLE;
+  return 0;
 }
 
 
@@ -51,7 +50,7 @@ int BinderClient::locateServer(const string& name, int* argType, HostPort* hp) {
   //get reply from binder
   string serverMsg;
   int rc = recvString(transport.m_sockfd, serverMsg);
-  if (rc < 0) return rc;
+  if (rc < 0) return Error::BINDER_UNREACHEABLE;
 
   if (serverMsg == NONE_REGISTERED) {
     return Error::NO_SERVER_WITH_ARGTYPE;
@@ -85,7 +84,6 @@ int BinderClient::cacheLocation(map<string, list<HostPort> >& ret) {
     for (; hp != hostports.end(); hp++) {
       HostPort tmp;
       tmp.fromString(*hp);
-      cout << tmp.toString() << endl;
       ret[args].push_back(tmp);
     }
   }
@@ -94,7 +92,7 @@ int BinderClient::cacheLocation(map<string, list<HostPort> >& ret) {
 }
 
 void Binder::disconnected(int clientSocket) {
-  // Handle "server" client termination by removing hostport in all mapping.
+  // Handle "server" client termination by removing hostport in all apiMapping.
   if (socketHostPortMap.find(clientSocket) == socketHostPortMap.end()) {
     return;
   }
@@ -102,8 +100,8 @@ void Binder::disconnected(int clientSocket) {
   HostPort hp = socketHostPortMap[clientSocket];
   socketHostPortMap.erase(clientSocket);
 
-  for (map<string, list<HostPort> >::iterator m = mapping.begin();
-      m != mapping.end();
+  for (map<string, list<HostPort> >::iterator m = apiMapping.begin();
+      m != apiMapping.end();
       m++) {
     for (list<HostPort>::iterator l = m->second.begin(); l != m->second.end(); l++)
     {
@@ -125,12 +123,12 @@ void Binder::handleRequest(int clientSocket, const string& msg) {
     hp.fromString(hostportStr);
 
     string key = msg.substr(msg.find('#')+1);
-    // Remember hostport mapping for client disconnection.
+    // Remember hostport apiMapping for client disconnection.
     socketHostPortMap[clientSocket] = hp;
 
-    map<string, list<HostPort> >::iterator s = mapping.find(key);
-    if (s == mapping.end()) {
-      mapping[key].push_front(hp);
+    map<string, list<HostPort> >::iterator s = apiMapping.find(key);
+    if (s == apiMapping.end()) {
+      apiMapping[key].push_front(hp);
     } else {
       list<HostPort>& l = s->second;
       bool duplicate = false;
@@ -151,20 +149,18 @@ void Binder::handleRequest(int clientSocket, const string& msg) {
     sendString(clientSocket, REGISTER_DONE);
   } else if (msg[0] == CLIENT_LOCATE) {
     string key = msg.substr(msg.find('#')+1);
-    cout << "client locate " << key << endl;
 
-    map<string, list<HostPort> >::iterator s = mapping.find(key);
-    if (s != mapping.end() && s->second.size()) {
+    map<string, list<HostPort> >::iterator s = apiMapping.find(key);
+    if (s != apiMapping.end() && s->second.size()) {
       list<HostPort>& l = s->second;
       sendString(clientSocket, l.front().toString()); // send result
       l.push_back(l.front()); // Do round robin thingy.
       l.pop_front();
     } else {
-      // does not have mapping yet.
+      // does not have apiMapping yet.
       sendString(clientSocket, NONE_REGISTERED);
     }
   } else if (msg[0] == TERMINATE_ALL) {
-    cout << "terminate all" << endl;
     // Do not accept new connections
     ++terminating;
 
@@ -177,8 +173,8 @@ void Binder::handleRequest(int clientSocket, const string& msg) {
     // Asyncrhonously wait for each server to ack
   } else if (msg[0] == CACHE_LOCATE) {
     string response = "C";
-    for (map<string, list<HostPort> >::iterator m = mapping.begin();
-      m != mapping.end();
+    for (map<string, list<HostPort> >::iterator m = apiMapping.begin();
+      m != apiMapping.end();
       m++) {
 
       response += "#" + m->first + "|";

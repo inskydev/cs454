@@ -42,8 +42,8 @@ struct Binder : public Server {
     return socketHostPortMap.empty();
   }
 
-  // member vars for mapping
-  map<string, list<HostPort> > mapping;
+  // member vars for apiMapping
+  map<string, list<HostPort> > apiMapping;
   map<int, HostPort> socketHostPortMap;
 };
 
