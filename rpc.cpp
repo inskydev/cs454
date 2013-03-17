@@ -161,7 +161,7 @@ RPCServer* rpcServer = NULL;
 int initBinderClient() {
   if (!binderClient) {
     // Set up connection to binder.
-    HostPort* hp = getHostPort(HostPort::BINDER, true, true);
+    HostPort* hp = getHostPort(HostPort::BINDER);
     if (!hp) return Error::MISSING_ENV_VAR;
     binderClient = new BinderClient(*hp);
     delete hp;

@@ -4,7 +4,7 @@ void* Server::thread_run(void* s) {
   Server* server = (Server*)s;
   while (server->terminate.get() == 0) {
     pair<int, string> work = server->workItems.get();
-    cout << work.second << endl;
+    //cout << work.second << endl;
     if (work.second == "END") break;
     server->handleRequest(work.first, work.second);
   }
@@ -38,7 +38,6 @@ int Server::execute() {
     if (binderSocket > 0 && FD_ISSET(binderSocket, &sockfds)) {
       string msg;
       int rc = recvString(binderSocket, msg);
-      cout << "Binder msg:" << msg << endl;
       if (msg.size() && msg.at(0) == 'T') {
         for (int i = 0; i < workers.size(); i++) {
           workItems.put(make_pair(0, "END"));

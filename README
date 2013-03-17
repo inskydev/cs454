@@ -2,8 +2,7 @@ Group members:
 s54zhang, Shao Yu Zhang, 20308263
 h57zhang, Hanpei Zhang, 20292868
 
-During our testing, it was very tedius to test/debug having to set host/port 
-every time. There is a command line flag to stringServer and stringClient to 
-allow server to publish hostport to public_html directory. 
-This is enabled if there are 2 command line arg to server and client 
-(any 2 arbitrary string).
+Run binder with ./binder
+
+It may be necessary to link to realtime library via -lrt.
+

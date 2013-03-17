@@ -1,15 +1,15 @@
 
 all: lib
 	# A Server
-	g++ -std=gnu++0x -Wno-write-strings -lrt -L. server.cpp -lrpc -o server 
+	#g++ -std=gnu++0x -Wno-write-strings -L. server.cpp -lrpc -o server 
 	# A client
-	g++ -std=gnu++0x -Wno-write-strings -L. client.cpp -lrpc -lpthread -o client 
+	#g++ -std=gnu++0x -Wno-write-strings -L. client.cpp -lrpc -o client 
 	# Binder
-	g++ -std=gnu++0x -L. binder_main.cpp -lrpc -lrt -o binder
+	g++ -std=gnu++0x -L. binder_main.cpp -lrt -lrpc -o binder
 
 lib:
 	# Static library
-	g++ -std=gnu++0x -c -g -o util.o util.cpp
+	g++ -std=gnu++0x -c -g -lrt -o util.o util.cpp
 	g++ -std=gnu++0x -c -g -o Transporter.o Transporter.cpp
 	g++ -std=gnu++0x -c -g -o Binder.o Binder.cpp
 	g++ -std=gnu++0x -c -g -o rpc.o rpc.cpp
