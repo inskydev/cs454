@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
 
   int* a1 = formatArgTypes(
       {
-        ArgType(INPUT, OUTPUT, ARG_CHAR, 0),
+        ArgType(NOT_INPUT, OUTPUT, ARG_CHAR, 0),
       });
   rpcRegister("f1", a1, f1);
 

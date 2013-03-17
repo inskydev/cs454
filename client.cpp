@@ -10,11 +10,12 @@ int main(int argc, char *argv[]) {
 
   int argTypes = 0;
   void** args0 = NULL; //(void **)malloc(0 * sizeof(void *));
-  //int s4 = rpcCall("f0", &argTypes, NULL);
+  int s4 = rpcCall("f0", &argTypes, NULL);
+  cout << s4 << endl;
 
   //int* a1 = formatArgTypes(
   //    {
-  //      ArgType(INPUT, OUTPUT, ARG_CHAR, 0),
+  //      ArgType(NOT_INPUT, OUTPUT, ARG_CHAR, 0),
   //    });
 
   //char value = 'v';
@@ -24,7 +25,7 @@ int main(int argc, char *argv[]) {
 
   //int s2 = rpcCall("f1", a1, args);
 
-  int rc = rpcTerminate();
-  cout << rc << endl;
+  //int rc = rpcTerminate();
+  //cout << rc << endl;
 
 }

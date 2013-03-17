@@ -233,7 +233,7 @@ string serializeCall(const string& name, int* argTypes, void** args) {
 
   void** it = args;
   int* at = argTypes;
-  for (;(*at); it++, at++) {
+  for (; (*at); it++, at++) {
     // need to know how to increment the ptrs of different size
 
     char* curr = (char*)*it;
@@ -275,4 +275,5 @@ string serializeCall(const string& name, int* argTypes, void** args) {
     }
   }
 
+  return request;
 }
