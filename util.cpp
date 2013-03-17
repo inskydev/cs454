@@ -162,7 +162,11 @@ int recvString(int sockfd, string& msg) {
     num_bytes += rc;
   }
   buffer[size - 1] = NULL; // null terminate.
-  msg = string(buffer);
+
+  msg.resize(size -1);
+  for (int i = 0; i < size - 1; i++) {
+    msg.at(i) = buffer[i];
+  }
   delete [] buffer;
 
   return 0;
@@ -235,19 +239,23 @@ string serializeCall(const string& name, int* argTypes, void** args) {
   int* at = argTypes;
   for (; (*at); it++, at++) {
     // need to know how to increment the ptrs of different size
-
     char* curr = (char*)*it;
-    int type = ((*at)>>16) & 0xFF;
-    int length = ((*at)) & 0xFF;
+    int a = (*at);
+    a = (a << 2) >> 2; // chop off top two bits.
+    int type = (a >> 16); // chop off bottom 16 bits
+    int length = (a & 0xffff); // Lower 16 bit is length
+
     if (!length) {
       length = 1;
     }
     request += to_string((long long int)length);
     request += ":";
+    cout << "len" << length << endl;
 
     for (int i = 0; i < length; i++) {
       if (type == ARG_CHAR) {
-        request += string(1, *curr) + ";";
+        request += string(1, *curr);
+        request += ";";
         curr += sizeof(char);
       } else if (type == ARG_SHORT) {
         long long int value = *(short*)curr;

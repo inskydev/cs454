@@ -31,7 +31,7 @@ struct RPCServer : public Server {
       // deserialize ..
       string normalized = msg.substr(1, msg.find('#') - 1);
       cout << normalized << endl;
-      map<string, skeleton>::iterator it =
+      map<string, pair<string, skeleton> >::iterator it =
         rpcHandlerMapping.find(normalized);
       if (it == rpcHandlerMapping.end()) {
         cout << "No API supported here" << endl;
@@ -42,17 +42,16 @@ struct RPCServer : public Server {
         int* args = rpcArgsMapping[normalized];
         int len = 0; while (args[len] != 0) len++;
         string argStr = msg.substr(msg.find('#') + 1);
-        cout << argStr << endl;
+        cout << "Arg str:" << argStr <<  " " << argStr.size() << endl;
         bool arrayLenWarning = false;
 
-        int aa;
         void** param = (void**) malloc(sizeof(void*) * len);
         // For every argument.
         for (int l = 0; l < len; l++) {
-          ASSERT(not argStr.empty(), "need more stirng to process");
           int type = (args[l] >> 16) & 0xFF;
           int length = (args[l]) & 0xFF;
-          bool isOutput = (args[l] & (1 << ARG_OUTPUT));
+          bool isInput = (args[l] & (1 << ARG_INPUT));
+          ASSERT(not argStr.empty(), "need more stirng to process");
 
           size_t delim_position = argStr.find(':');
           int actualLength = atoi(argStr.substr(0, delim_position).c_str());
@@ -82,39 +81,72 @@ struct RPCServer : public Server {
             ASSERT(false, "Invalid type");
           }
 
+          param[l] = argument;
           argStr = argStr.substr(delim_position + 1);
           cout << "args nows=\"" << argStr << "\"" << endl;
           for (int a = 0; a < actualLength; a++) {
-            cout << a << endl;
+            string tmpStr = argStr.substr(0, argStr.find(';'));
+            argStr = argStr.substr(tmpStr.size() + 1);
+
             if (type == ARG_CHAR) {
               char* v = (char*) argument;
-              v[a] = argStr.at(a);
-              argStr = argStr.substr(sizeof(char));
+              v[a] = tmpStr.at(0);
             } else if (type == ARG_SHORT) {
-              // TODO
+              short* v = (short*)argument;
+              v[a] = (short)atoi(tmpStr.c_str());
             } else if (type == ARG_INT) {
+              int* v = (int*)argument;
+              v[a] = (int)atoi(tmpStr.c_str());
             } else if (type == ARG_LONG) {
+              long* v = (long*)argument;
+              v[a] = (long)atol(tmpStr.c_str());
             } else if (type == ARG_DOUBLE) {
+              double* v = (double*)argument;
+              v[a] = (double)atof(tmpStr.c_str());
             } else if (type == ARG_FLOAT) {
+              float* v = (float*)argument;
+              v[a] = (float)atof(tmpStr.c_str());
             } else {
               ASSERT(false, "Invalid type");
             }
           }
         }
         //cout << "calling" << endl;
-        int rc = it->second(&aa, param);
-        cout << "ret:" << rc << endl;
+        int rc = it->second.second(args, param);
         //free(param);
         // TODO deletes,
         // TODO, loop through output params and send them back.
+        string ret = serializeCall(it->second.first, rpcArgsMapping[normalized], param);
+        cout << "returing" << ret << endl;
+        sendString(socketid, ret); // reply to client
+        for (int l = 0; l < len; l++) {
+          int type = (args[l] >> 16) & 0xFF;
+          if (type == ARG_CHAR) {
+            char* v = (char*)param[l];
+            delete [] v;
+          } else if (type == ARG_SHORT) {
+            short* v = (short*)param[l];
+            delete [] v;
+          } else if (type == ARG_INT) {
+            int* v = (int*)param[l];
+            delete [] v;
+          } else if (type == ARG_LONG) {
+            long* v = (long*)param[l];
+            delete [] v;
+          } else if (type == ARG_DOUBLE) {
+            double* v = (double*)param[l];
+            delete [] v;
+          } else if (type == ARG_FLOAT) {
+            float* v = (float*)param[l];
+            delete [] v;
+          }
+        }
+        free(param);
       }
-      // check with rpcHandlerMapping again
-      // call skeleton with values.
-      sendString(socketid, ""); // reply to client
     }
   }
 
-  map<string, skeleton> rpcHandlerMapping;
+  map<string, pair<string, skeleton> > rpcHandlerMapping;
   map<string, int*> rpcArgsMapping;
 };
 
@@ -158,7 +190,7 @@ int rpcRegister(char* name, int* argTypes, skeleton f) {
 
   // Register at local server handler.
   string args = normalizeArgs(string(name), argTypes);
-  rpcServer->rpcHandlerMapping[args] = f;
+  rpcServer->rpcHandlerMapping[args] = make_pair(string(name), f);
   int len = 0;
   while (argTypes[len] != 0) {
     len++;
@@ -190,80 +222,61 @@ int rpcCall(char* name, int* argTypes, void** args) {
   transServer.connect();
 
   string request = serializeCall(string(name), argTypes, args);
-  cout << "Sending " << request << endl;
+  cout << "Send: " << request << " " << request.size() << endl;
 
   // request should have everything now
   sendString(transServer.m_sockfd, request);
 
-
   //take the reply and shove the parameters back to the pointers
-  string processedString;
-  rc = recvString(transServer.m_sockfd, processedString);
+  string reply;
+  rc = recvString(transServer.m_sockfd, reply);
   if (rc < 0) return rc;
+  cout << "Recv: " << reply << endl;
 
-  // I haven't read this very carefully,
-  // but we should retrieve output results only.
-  char* cpString = new char[processedString.length()+1];
-  strcpy(cpString, processedString.c_str());
+  int len = 0; while (argTypes[len] != 0) len++;
+  string argStr = reply.substr(reply.find('#') + 1);
+  for (int l = 0; l < len; l++) {
+    int type = (argTypes[l] >> 16) & 0xFF;
+    int length = (argTypes[l]) & 0xFF;
+    bool isOutput = (argTypes[l] & (1 << ARG_OUTPUT));
+    ASSERT(not argStr.empty(), "need more stirng to process");
 
-  //Ignore argTypes in the reply
-  while (*cpString != '#')
-    cpString ++;
+    size_t delim_position = argStr.find(':');
+    int actualLength = atoi(argStr.substr(0, delim_position).c_str());
 
-  void** it = args;
-  int* at = argTypes;
-  for (;(*at);it++,at++){
-    
-    if (!((*at) && 0x80000000)) //check if this is output
-        continue;
-        
-    // need to know how to increment the ptrs of different size
-    char* curr = (char*)*it;
+    argStr = argStr.substr(delim_position + 1);
 
-    int type = ((*at)>>16) & 0xFF;
-    int length = ((*at)) & 0xFF;
+    for (int a = 0; a < actualLength; a++) {
+      cout << "args nows=\"" << argStr << "\"" << endl;
+      string tmpStr = argStr.substr(0, argStr.find(';'));
+      argStr = argStr.substr(tmpStr.size() + 1);
+      if (!isOutput) continue;
 
-    if (!length)
-      length = 1;
-
-    for (int i =0; i<length; i++){
-      switch (((*at)>>16) & 0xFF ){
-        case ARG_CHAR:
-          memcpy(curr, cpString, sizeof(char));
-          break;
-        case ARG_SHORT:
-          memcpy(curr, cpString, sizeof(short));
-          break;
-        case ARG_INT:
-          memcpy(curr, cpString, sizeof(int));
-          break;
-        case ARG_LONG:
-          memcpy(curr, cpString, sizeof(long));
-          break;
-        case ARG_DOUBLE:
-          memcpy(curr, cpString, sizeof(double));
-          break;
-        case ARG_FLOAT:
-          memcpy(curr, cpString, sizeof(float));
-          break;
+      if (type == ARG_CHAR) {
+        char* v = (char*) args[l];
+        v[a] = tmpStr.at(0);
+      } else if (type == ARG_SHORT) {
+        short* v = (short*) args[l];
+        v[a] = (short)atoi(tmpStr.c_str());
+      } else if (type == ARG_INT) {
+        int* v = (int*) args[l];
+        v[a] = (int)atoi(tmpStr.c_str());
+      } else if (type == ARG_LONG) {
+        long* v = (long*) args[l];
+        v[a] = (long)atol(tmpStr.c_str());
+      } else if (type == ARG_DOUBLE) {
+        double* v = (double*) args[l];
+        v[a] = (double)atof(tmpStr.c_str());
+      } else if (type == ARG_FLOAT) {
+        float* v = (float*) args[l];
+        v[a] = (float)atof(tmpStr.c_str());
+      } else {
+        ASSERT(false, "Invalid type");
       }
-      //use delimiter
-      while (*cpString != ';')
-        cpString++;
-      cpString++;
     }
-    
-    if (!(*cpString))
-      break;
-    
-    while (*cpString != ':')
-      cpString++;
-    cpString++;
-    
   }
 
   return 0;
-
 }
 
 // =====================================================================
