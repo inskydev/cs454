@@ -7,8 +7,12 @@
 #include "Transporter.cpp"
 
 int main(int argc, char *argv[]) {
-
   int argTypes = 0;
+  rpcCacheCall("f0", &argTypes, NULL);
+  rpcCacheCall("f0", &argTypes, NULL);
+  rpcCacheCall("f0", &argTypes, NULL);
+
+#if 0
   void** args0 = NULL; //(void **)malloc(0 * sizeof(void *));
   int s4 = rpcCall("f0", &argTypes, NULL);
   cout << "f0:" << s4 << endl;
@@ -67,16 +71,46 @@ int main(int argc, char *argv[]) {
     int* a4 = formatArgTypes(
       {
         ArgType(INPUT, OUTPUT, ARG_INT, 0),
+        ArgType(INPUT, OUTPUT, ARG_DOUBLE, 0),
       });
 
-    int test = 4;
-    void** args = (void**)malloc(sizeof(void*) * 1);
-    args[0] = &test;
+    int v1 = 4;
+    double v2 = 4.0;
+    void** args = (void**)malloc(sizeof(void*) * 2);
+    args[0] = &v1;
+    args[1] = &v2;
     int s = rpcCall("f4", a4, args);
     cout << "c3: " << s << endl;
-    cout << test << endl;
+    cout << v1 << endl;
+    cout << v2 << endl;
   }
-  //int rc = rpcTerminate();
-  //cout << rc << endl;
+  {
+      int* a5 = formatArgTypes(
+      {
+        ArgType(INPUT, OUTPUT, ARG_INT, 0),
+        ArgType(INPUT, OUTPUT, ARG_DOUBLE, 0),
+        ArgType(INPUT, NOT_OUTPUT, ARG_SHORT, 3),
+        ArgType(NOT_INPUT, OUTPUT, ARG_SHORT, 3),
+      });
+
+    int v1 = 4;
+    double v2 = 4.0;
+    short v3[]  = {1, 2, 3};
+    short v4[]  = {0, 0, 0};
+    void** args = (void**)malloc(sizeof(void*) * 4);
+    args[0] = &v1;
+    args[1] = &v2;
+    args[2] = &v3;
+    args[3] = &v4;
+    int s = rpcCall("f5", a5, args);
+    cout << "c5: " << s << endl;
+    cout << v1 << endl;
+    cout << v2 << endl;
+    cout << v3[0] << v3[1] << v3[2] << endl;
+    cout << v4[0] << v4[1] << v4[2] << endl;
+  }
+  int rc = rpcTerminate();
+  cout << rc << endl;
+#endif
 
 }

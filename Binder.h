@@ -15,6 +15,8 @@ struct BinderClient {
 
   int locateServer(const string& name, int* argType, HostPort* hp);
 
+  int cacheLocation(map<string, list<HostPort> >&);
+
   int terminateAll();
 
   HostPort hostport; // Binder hostport

@@ -1,4 +1,5 @@
 #include "util.h"
+#include <sstream>
 
 std::string exec(string cmd) {
   FILE* pipe = popen(cmd.c_str(), "r");
@@ -140,7 +141,7 @@ int recvString(int sockfd, string& msg) {
     char* begin = (char*)&size;
     int rc = read(sockfd, begin + num_bytes, sizeof(size) - num_bytes);
     if (rc == 0) {
-      cout << "client terminated?" << endl;
+      //cout << "client terminated?" << endl;
       return -1;
     }
     if (rc < 0) return -1;
@@ -251,6 +252,7 @@ string serializeCall(const string& name, int* argTypes, void** args) {
     request += to_string((long long int)length);
     request += ":";
     cout << "len" << length << endl;
+    cout << request << endl;
 
     for (int i = 0; i < length; i++) {
       if (type == ARG_CHAR) {
@@ -285,3 +287,19 @@ string serializeCall(const string& name, int* argTypes, void** args) {
 
   return request;
 }
+
+std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
+  std::stringstream ss(s);
+  std::string item;
+  while(std::getline(ss, item, delim)) {
+    elems.push_back(item);
+  }
+  return elems;
+}
+
+
+std::vector<std::string> split(const std::string &s, char delim) {
+  std::vector<std::string> elems;
+  return split(s, delim, elems);
+}
+

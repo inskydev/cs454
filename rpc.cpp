@@ -24,20 +24,17 @@ struct RPCServer : public Server {
   virtual void handleRequest(int socketid, const string& msg) {
     if (msg[0] == 'T') {
       ++terminating; // stop accept new clients.
-      std::cout << "Server terminating" << endl;
+      //std::cout << "Server terminating" << endl;
     } else if (msg[0] == 'C') {
       std::cout << "Got request:" << msg << endl;
       // TODO, array length too long.
       // deserialize ..
       string normalized = msg.substr(1, msg.find('#') - 1);
-      cout << normalized << endl;
       map<string, pair<string, skeleton> >::iterator it =
         rpcHandlerMapping.find(normalized);
       if (it == rpcHandlerMapping.end()) {
-        cout << "No API supported here" << endl;
         sendString(socketid, UNSUPPORTED_CALL);
       } else {
-        cout << "Supported" << endl;
         // Iterate through each argument check array length.
         int* args = rpcArgsMapping[normalized];
         int len = 0; while (args[len] != 0) len++;
@@ -50,7 +47,6 @@ struct RPCServer : public Server {
         for (int l = 0; l < len; l++) {
           int type = (args[l] >> 16) & 0xFF;
           int length = (args[l]) & 0xFF;
-          bool isInput = (args[l] & (1 << ARG_INPUT));
           ASSERT(not argStr.empty(), "need more stirng to process");
 
           size_t delim_position = argStr.find(':');
@@ -59,7 +55,6 @@ struct RPCServer : public Server {
 
           void* argument = NULL;
           if (type == ARG_CHAR) {
-            cout << "Char array:" << endl;
             char* v = new char[actualLength];
             argument = v;
           } else if (type == ARG_SHORT) {
@@ -111,11 +106,8 @@ struct RPCServer : public Server {
             }
           }
         }
-        //cout << "calling" << endl;
+
         int rc = it->second.second(args, param);
-        //free(param);
-        // TODO deletes,
-        // TODO, loop through output params and send them back.
         string ret = serializeCall(it->second.first, rpcArgsMapping[normalized], param);
         cout << "returing" << ret << endl;
         sendString(socketid, ret); // reply to client
@@ -182,15 +174,22 @@ int rpcInit() {
 
 // =====================================================================
 int rpcRegister(char* name, int* argTypes, skeleton f) {
-  // TODO, check arguments are not null
   if (!binderClient) return Error::UNINITIALIZED_BINDER;
   if (!rpcServer) return Error::UNINITIALIZED_SERVER;
   if (!argTypes) return Error::INVALID_ARGTYPES;
-  //if (!f) return Error::INVALID_SKELETON;
+  if (!f) return Error::INVALID_SKELETON;
 
   // Register at local server handler.
   string args = normalizeArgs(string(name), argTypes);
+  if (rpcServer->rpcHandlerMapping.find(args) !=
+      rpcServer->rpcHandlerMapping.end()) {
+    // Overwrite the handler
+    rpcServer->rpcHandlerMapping[args] = make_pair(string(name), f);
+    return Warn::REREGISTER_SAME_INTERFACE;
+  }
+
   rpcServer->rpcHandlerMapping[args] = make_pair(string(name), f);
+
   int len = 0;
   while (argTypes[len] != 0) {
     len++;
@@ -205,20 +204,30 @@ int rpcRegister(char* name, int* argTypes, skeleton f) {
 }
 
 // =====================================================================
-int rpcCall(char* name, int* argTypes, void** args) {
+int rpcCallHelper(char* name, int* argTypes, void** args, HostPort* hp) {
   if (!name) return Error::INVALID_NAME;
   if (!argTypes) return Error::INVALID_ARGTYPES;
   int rc = initBinderClient();
   if (rc < 0) return rc;
 
   cout << "rpc call" << endl;
+  string hostname;
+  int port;
 
-  HostPort hpServer;
-  rc = binderClient->locateServer(string(name), argTypes, &hpServer);
-  if (rc < 0) return rc;
-  cout << "located " << hpServer.toString() << endl;
+  if (!hp) {
+    HostPort hpServer;
+    rc = binderClient->locateServer(string(name), argTypes, &hpServer);
+    if (rc < 0) return rc;
+    cout << "located " << hpServer.toString() << endl;
+    hostname = hpServer.hostname;
+    port = hpServer.port;
+  } else {
+    cout  << hp->hostname << endl;
+    hostname = hp->hostname;
+    port = hp->port;
+  }
 
-  Transporter transServer(hpServer.hostname, hpServer.port);
+  Transporter transServer(hostname, port);
   transServer.connect();
 
   string request = serializeCall(string(name), argTypes, args);
@@ -230,7 +239,8 @@ int rpcCall(char* name, int* argTypes, void** args) {
   //take the reply and shove the parameters back to the pointers
   string reply;
   rc = recvString(transServer.m_sockfd, reply);
-  if (rc < 0) return rc;
+  if (rc < 0) return Error::SERVER_UNREACHEABLE;
+  if (reply == UNSUPPORTED_CALL) return Error::SERVER_DOES_NOT_SUPPORT_CALL;
   cout << "Recv: " << reply << endl;
 
   int len = 0; while (argTypes[len] != 0) len++;
@@ -277,16 +287,75 @@ int rpcCall(char* name, int* argTypes, void** args) {
   }
 
   return 0;
+
+}
+int rpcCall(char* name, int* argTypes, void** args) {
+  return rpcCallHelper(name, argTypes, args, NULL);
 }
 
 // =====================================================================
-int rpcCacheCall(char* name, int* argTypes, void** args){
+map<string, list<HostPort> > cache;
+int rpcCacheCall(char* name, int* argTypes, void** args) {
+  int rc = initBinderClient();
+  if (rc < 0) return rc;
+  string norm = normalizeArgs(name, argTypes);
+  map<string, list<HostPort> >::iterator api = cache.find(norm);
+
+  if (api == cache.end()) {
+    rc = binderClient->cacheLocation(cache);
+    if (rc < 0) return rc;
+    api = cache.find(norm);
+  }
+
+  if (api == cache.end()) {
+    return Error::NO_SERVER_WITH_ARGTYPE;
+  }
+
+  bool success = false;
+  for (list<HostPort>::iterator hp = api->second.begin();
+      hp != api->second.end();
+      hp++) {
+    HostPort& tmp = *hp;
+    rc = rpcCallHelper(name, argTypes, args, &tmp);
+    if (rc >= 0) {
+      success = true;
+      break;
+    }
+  }
+
+  if (success) {
+    return rc;
+  } else {
+    // Update current location and try again.
+    rc = binderClient->cacheLocation(cache);
+    if (rc < 0) return rc;
+    api = cache.find(norm);
+  }
+
+  if (api == cache.end()) {
+    return Error::NO_SERVER_WITH_ARGTYPE;
+  }
+
+  for (list<HostPort>::iterator hp = api->second.begin();
+      hp != api->second.end();
+      hp++) {
+    HostPort& tmp = *hp;
+    rc = rpcCallHelper(name, argTypes, args, &tmp);
+    if (rc >= 0) {
+      break;
+    }
+  }
+
+  return rc;
 }
+
+
 
 // =====================================================================
 int rpcExecute() {
   if (!binderClient) return Error::UNINITIALIZED_BINDER;
   if (!rpcServer) return Error::UNINITIALIZED_SERVER;
+  if (rpcServer->rpcArgsMapping.size() == 0) return Error::NO_FUNCTION_TO_SERVE;
   return rpcServer->execute();
 }
 

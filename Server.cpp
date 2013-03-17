@@ -3,16 +3,11 @@
 void* Server::thread_run(void* s) {
   Server* server = (Server*)s;
   while (server->terminate.get() == 0) {
-    cout << "Thread running" << endl;
     pair<int, string> work = server->workItems.get();
     cout << work.second << endl;
     if (work.second == "END") break;
     server->handleRequest(work.first, work.second);
   }
-
-  // Tell other threads to stop working as well.
-  cout << "thread terminating" << endl;
-  sleep(1);
 
   return NULL;
 }
@@ -29,9 +24,7 @@ int Server::execute() {
 
   while (terminate.get() == 0 &&
       select(highest_fds + 1, &sockfds, NULL, NULL, NULL) >= 0) {
-    cout << "selected" << endl;
     if (FD_ISSET(listenSocket, &sockfds)) {
-      cout << "new client" << endl;
       // New client is knocking.
       socklen_t clilen = sizeof(cli_addr);
       int client = accept(listenSocket, (struct sockaddr*)&cli_addr, &clilen);
@@ -47,11 +40,9 @@ int Server::execute() {
       int rc = recvString(binderSocket, msg);
       cout << "Binder msg:" << msg << endl;
       if (msg.size() && msg.at(0) == 'T') {
-        cout << "Terminating server threads" << endl;
         for (int i = 0; i < workers.size(); i++) {
           workItems.put(make_pair(0, "END"));
         }
-        cout << "Binder sock: " << binderSocket << endl;;
         break; // Wait for threads to end.
       } else if (msg.empty()) {
         close(binderSocket);
@@ -75,7 +66,6 @@ int Server::execute() {
           close(*client);
           clientSockets.erase(client); // Client closed socket.
         } else {
-          cout << "Got:" << msg << endl;
           binderTerminatingClient = *client;
           workItems.put(make_pair(*client, msg));
           isTerminating = msg.size() && msg.at(0) == 'T';
@@ -84,9 +74,7 @@ int Server::execute() {
       }
     }
 
-    cout << isTerminating << canTerminateNow() << endl;
     if (isTerminating && canTerminateNow()) break;
-
     // Reset sockets that needed to be selected on.
     FD_ZERO(&sockfds);
     if (terminating.get() == 0) {
@@ -101,14 +89,11 @@ int Server::execute() {
     }
   } // End select
 
-  cout << "Binder sock: " << binderSocket << endl;;
-
   if (binderTerminatingClient > 0) {
     workItems.put(make_pair(0, "END"));
     sendString(binderTerminatingClient, "");
   }
   // Wait for threads to finish.
-  cout << "waiting for threads to finish" << endl;
   for (list<pthread_t>::iterator worker = workers.begin();
       worker != workers.end();
       ++worker) {
@@ -118,6 +103,7 @@ int Server::execute() {
   if (binderSocket > 0) {
     close(binderSocket);
   }
+
   // close all clients
   for (list<int>::iterator client = clientSockets.begin();
         client != clientSockets.end();
@@ -125,6 +111,5 @@ int Server::execute() {
     close(*client);
   }
 
-  cout << "Server.cpp Leaving" << endl;
   return 0;
 }

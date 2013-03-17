@@ -33,7 +33,17 @@ struct Error {
     INVALID_NAME = -6,
     INVALID_ARGTYPES = -7,
     INVALID_ARGS = -8,
-    NO_SERVER_WITH_ARGTYPE = -9
+    NO_SERVER_WITH_ARGTYPE = -9,
+    SERVER_DOES_NOT_SUPPORT_CALL = -10,
+    SERVER_UNREACHEABLE = -11,
+    INVALID_SKELETON = -12,
+    NO_FUNCTION_TO_SERVE = -13,
+  };
+};
+
+struct Warn {
+  enum TYPE {
+    REREGISTER_SAME_INTERFACE = 1,
   };
 };
 
@@ -192,5 +202,7 @@ int* formatArgTypes(const vector<ArgType>& args);
 string normalizeArgs(const string& name, int* argTypes);
 
 string serializeCall(const string& name, int* argTypes, void** args);
+
+vector<string> split(const string& s, char delim);
 
 #endif // UTIL_H_

@@ -3,6 +3,7 @@
 #define SERVER_REGISTER   'R'
 #define CLIENT_LOCATE     'L'
 #define TERMINATE_ALL     'T'
+#define CACHE_LOCATE      'C'
 #define NONE_REGISTERED   "NONE_REGISTERED"
 #define REREGISTER        "REREGISTER"
 #define REGISTER_DONE     "DONE"
@@ -60,9 +61,40 @@ int BinderClient::locateServer(const string& name, int* argType, HostPort* hp) {
   return 0;
 }
 
+
+int BinderClient::cacheLocation(map<string, list<HostPort> >& ret) {
+  string msg = string(1, CACHE_LOCATE);
+  if (sendString(transport.m_sockfd, msg) < 0) {
+    return Error::BINDER_UNREACHEABLE;
+  }
+
+  string reply;
+  int rc = recvString(transport.m_sockfd, reply);
+  if (rc < 0) return rc;
+
+  ret.clear();
+  vector<string> api_level = split(reply, '#');
+  vector<string>::iterator api = api_level.begin();
+  ++api;
+  for (;api != api_level.end(); api++) {
+    vector<string> hostports = split(*api, '|');
+    vector<string>::iterator hp = hostports.begin();
+    string args = *hp;
+    hp++;
+
+    for (; hp != hostports.end(); hp++) {
+      HostPort tmp;
+      tmp.fromString(*hp);
+      cout << tmp.toString() << endl;
+      ret[args].push_back(tmp);
+    }
+  }
+
+  return 0;
+}
+
 void Binder::disconnected(int clientSocket) {
-  // Handle client termination by removing hostport in all mapping.
-  // TODO, this does not work.
+  // Handle "server" client termination by removing hostport in all mapping.
   if (socketHostPortMap.find(clientSocket) == socketHostPortMap.end()) {
     return;
   }
@@ -75,7 +107,6 @@ void Binder::disconnected(int clientSocket) {
       m++) {
     for (list<HostPort>::iterator l = m->second.begin(); l != m->second.end(); l++)
     {
-      cout << l->toString() << endl;
       if (hp == *l) {
         m->second.erase(l);
         break;
@@ -88,12 +119,7 @@ void Binder::disconnected(int clientSocket) {
 
 void Binder::handleRequest(int clientSocket, const string& msg) {
   // NOTE, this must be single threaded.
-  cout << "handle:" << msg << endl;
-
   if (msg[0] == SERVER_REGISTER) {
-    cout << "register" << endl;
-    cout << msg << endl;
-
     string hostportStr = msg.substr(1, msg.find('#') - 1);
     HostPort hp;
     hp.fromString(hostportStr);
@@ -104,7 +130,6 @@ void Binder::handleRequest(int clientSocket, const string& msg) {
 
     map<string, list<HostPort> >::iterator s = mapping.find(key);
     if (s == mapping.end()) {
-      cout << "registered key" << key << " " << hp.toString() << endl;
       mapping[key].push_front(hp);
     } else {
       list<HostPort>& l = s->second;
@@ -130,13 +155,11 @@ void Binder::handleRequest(int clientSocket, const string& msg) {
 
     map<string, list<HostPort> >::iterator s = mapping.find(key);
     if (s != mapping.end() && s->second.size()) {
-      cout << "found a server" << endl;
       list<HostPort>& l = s->second;
       sendString(clientSocket, l.front().toString()); // send result
       l.push_back(l.front()); // Do round robin thingy.
       l.pop_front();
     } else {
-      cout << "no server located" << endl;
       // does not have mapping yet.
       sendString(clientSocket, NONE_REGISTERED);
     }
@@ -149,12 +172,23 @@ void Binder::handleRequest(int clientSocket, const string& msg) {
     for (map<int, HostPort>::iterator i = socketHostPortMap.begin();
         i != socketHostPortMap.end();
         i++) {
-      cout << "Sending to: " << i->second.toString() << endl;
       sendString(i->first, msg);
     }
     // Asyncrhonously wait for each server to ack
+  } else if (msg[0] == CACHE_LOCATE) {
+    string response = "C";
+    for (map<string, list<HostPort> >::iterator m = mapping.begin();
+      m != mapping.end();
+      m++) {
+
+      response += "#" + m->first + "|";
+      for (list<HostPort>::iterator l = m->second.begin(); l != m->second.end(); l++)
+      {
+        response += l->toString() + "|";
+      }
+    }
+    sendString(clientSocket, response);
   } else {
-    cout << "bad request" << endl;
     sendString(clientSocket, MALFORMED_REQUEST);
   }
 }

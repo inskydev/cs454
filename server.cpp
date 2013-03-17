@@ -36,12 +36,26 @@ int f3(int *argTypes, void **args) {
 }
 
 int f4(int *argTypes, void **args) {
-  int* arg = (int*) args[0];
-  *arg = *arg + 42;
+  int* arg1 = (int*) args[0];
+  *arg1 = *arg1 + 42;
+  double* arg2 = (double*) args[1];
+  *arg2 += 6.66;
   return 2;
 }
 
+int f5(int *argTypes, void **args) {
+  int* arg1 = (int*) args[0];
+  *arg1 = *arg1 + 42;
+  double* arg2 = (double*) args[1];
+  *arg2 += 6.66;
+  short* arg3 = (short*) args[2];
+  short* arg4 = (short*) args[3];
+  arg4[0] = arg3[0];
+  arg4[1] = arg3[1];
+  arg4[2] = arg3[2];
 
+  return 2;
+}
 
 int main(int argc, char* argv[]) {
 
@@ -78,8 +92,18 @@ int main(int argc, char* argv[]) {
   int* a4 = formatArgTypes(
       {
         ArgType(INPUT, OUTPUT, ARG_INT, 0),
+        ArgType(INPUT, OUTPUT, ARG_DOUBLE, 0),
       });
   rpcRegister("f4", a4, f4);
+
+  int* a5 = formatArgTypes(
+      {
+        ArgType(INPUT, OUTPUT, ARG_INT, 0),
+        ArgType(INPUT, OUTPUT, ARG_DOUBLE, 0),
+        ArgType(INPUT, NOT_OUTPUT, ARG_SHORT, 7),
+        ArgType(NOT_INPUT, OUTPUT, ARG_SHORT, 7),
+      });
+  rpcRegister("f5", a5, f5);
 
   rpcExecute();
 
